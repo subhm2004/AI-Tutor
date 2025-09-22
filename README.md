@@ -133,5 +133,5 @@ This project is licensed under the [MIT License](LICENSE).
 
 ## 📬 Contact
 
-For questions or feedback, please contact [Shubham] at [subhu04012003@gmail.com].
+For questions or feedback, please contact subhu04012003@gmail.com.
 
