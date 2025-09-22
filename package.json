@@ -1,0 +1,11 @@
+{
+  "name": "ai-tutor-root",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n backend,frontend -c blue,green \"cd backend && venv/bin/python app.py\" \"cd frontend && npm run dev\"",
+    "setup:frontend": "npm --prefix frontend install"
+  },
+  "devDependencies": {
+    "concurrently": "^9.0.0"
+  }
+}
