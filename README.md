@@ -1,4 +1,4 @@
-# AI Tutor  🤖📚
+# AI Tutor – Multi-Agent Learning Assistant 🤖📚
 
 This project is a comprehensive AI Tutor application designed to provide personalized learning experiences. It features a dynamic frontend built with Next.js and a robust backend powered by Flask, enabling real-time chat interactions and intelligent tutoring assistance. The application allows users to engage in conversations with an AI tutor, receive explanations, and explore various educational topics.
 
