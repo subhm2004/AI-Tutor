@@ -18,30 +18,35 @@ import {
   Lightbulb,
   ImagePlus,
   X,
+  Square,
+  RotateCcw,
 } from "lucide-react";
 import { chatApi } from "@/utils/api";
 import {
   prepareImageForUpload,
+  parseDataUrlImage,
   type PreparedImage,
 } from "@/utils/image-upload";
 import { motion, AnimatePresence } from "framer-motion";
 import { TypingMessage } from "@/components/typing-message";
 import { MarkdownMessage } from "@/components/markdown-message";
 import { AgentBadge } from "@/components/agent-badge";
-
 interface ChatInterfaceProps {
   chat: Chat;
   onAddMessage: (chatId: string, message: Message) => void;
+  onSetMessages: (chatId: string, messages: Message[]) => void;
   onUpdateTitle: (chatId: string, firstMessage: string) => void;
 }
 
 export function ChatInterface({
   chat,
   onAddMessage,
+  onSetMessages,
   onUpdateTitle,
 }: ChatInterfaceProps) {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [skipTyping, setSkipTyping] = useState(false);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
   const [pendingImage, setPendingImage] = useState<PreparedImage | null>(null);
   const [imageError, setImageError] = useState<string | null>(null);
@@ -53,6 +58,9 @@ export function ChatInterface({
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
+  const isBusy = isLoading || !!typingMessage;
 
   // Function to scroll to bottom
   const scrollToBottom = () => {
@@ -91,11 +99,78 @@ export function ChatInterface({
   }, [input]);
 
   const showAssistantReply = (responseContent: string, agent?: string) => {
+    setSkipTyping(false);
     setTypingMessage({
       id: `assistant-${Date.now()}`,
       content: responseContent,
       agent,
     });
+  };
+
+  const toApiHistory = (messages: Message[]) =>
+    messages.map((msg) => ({
+      role: msg.role,
+      content: msg.content,
+    }));
+
+  const fetchAssistantReply = async (
+    historyMessages: Message[],
+    options?: { imagePayload?: PreparedImage; userNote?: string }
+  ) => {
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    setIsLoading(true);
+
+    try {
+      let response;
+      if (options?.imagePayload) {
+        response = await chatApi.sendImageMessage(
+          {
+            image: options.imagePayload.base64,
+            mimeType: options.imagePayload.mimeType,
+            text: options.userNote,
+          },
+          controller.signal
+        );
+      } else {
+        response = await chatApi.sendMessage(
+          toApiHistory(historyMessages),
+          controller.signal
+        );
+      }
+
+      const responseContent =
+        response.message ||
+        response.response ||
+        "Sorry, I could not process your request.";
+
+      showAssistantReply(responseContent, response.agent);
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        return;
+      }
+      console.error("Error sending message:", error);
+      const errorContent =
+        error instanceof Error
+          ? error.message
+          : "Sorry, there was an error processing your request. Please try again.";
+      showAssistantReply(errorContent, "Unknown");
+    } finally {
+      abortControllerRef.current = null;
+      setIsLoading(false);
+    }
+  };
+
+  const handleStop = () => {
+    if (isLoading) {
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = null;
+      setIsLoading(false);
+      return;
+    }
+    if (typingMessage) {
+      setSkipTyping(true);
+    }
   };
 
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -118,7 +193,7 @@ export function ChatInterface({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const text = input.trim();
-    if ((!text && !pendingImage) || isLoading) return;
+    if ((!text && !pendingImage) || isBusy) return;
 
     const userMessage: Message = {
       id: `user-${Date.now()}`,
@@ -142,39 +217,48 @@ export function ChatInterface({
       );
     }
 
-    setIsLoading(true);
+    await fetchAssistantReply([...chat.messages, userMessage], {
+      imagePayload: imagePayload ?? undefined,
+      userNote: text,
+    });
+  };
 
-    try {
-      let response;
-      if (imagePayload) {
-        response = await chatApi.sendImageMessage({
-          image: imagePayload.base64,
-          mimeType: imagePayload.mimeType,
-          text,
-        });
-      } else {
-        const chatHistory = [...chat.messages, userMessage].map((msg) => ({
-          role: msg.role,
-          content: msg.content,
-        }));
-        response = await chatApi.sendMessage(chatHistory);
+  const handleRegenerate = async () => {
+    if (isBusy) return;
+
+    const messages = chat.messages;
+    let lastAssistantIndex = -1;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "assistant") {
+        lastAssistantIndex = i;
+        break;
       }
+    }
+    if (lastAssistantIndex === -1) return;
 
-      const responseContent =
-        response.message ||
-        response.response ||
-        "Sorry, I could not process your request.";
+    const trimmed = messages.slice(0, lastAssistantIndex);
+    const lastUser = [...trimmed].reverse().find((m) => m.role === "user");
+    if (!lastUser) return;
 
-      showAssistantReply(responseContent, response.agent);
-    } catch (error) {
-      console.error("Error sending message:", error);
-      const errorContent =
-        error instanceof Error
-          ? error.message
-          : "Sorry, there was an error processing your request. Please try again.";
-      showAssistantReply(errorContent, "Unknown");
-    } finally {
-      setIsLoading(false);
+    onSetMessages(chat.id, trimmed);
+
+    if (lastUser.imageUrl) {
+      const parsed = parseDataUrlImage(lastUser.imageUrl);
+      if (!parsed) return;
+      const note =
+        lastUser.content !== "Question from uploaded image"
+          ? lastUser.content
+          : "";
+      await fetchAssistantReply(trimmed, {
+        imagePayload: {
+          base64: parsed.base64,
+          mimeType: parsed.mimeType,
+          dataUrl: lastUser.imageUrl,
+        },
+        userNote: note,
+      });
+    } else {
+      await fetchAssistantReply(trimmed);
     }
   };
 
@@ -190,8 +274,13 @@ export function ChatInterface({
 
       onAddMessage(chat.id, assistantMessage);
       setTypingMessage(null);
+      setSkipTyping(false);
     }
   };
+
+  const lastAssistantId =
+    [...chat.messages].reverse().find((m) => m.role === "assistant")?.id ??
+    null;
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
@@ -407,20 +496,34 @@ export function ChatInterface({
                     >
                       <span>{formatTime(message.timestamp)}</span>
                       {message.role === "assistant" && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700"
-                          onClick={() =>
-                            copyToClipboard(message.content, message.id)
-                          }
-                        >
-                          {copiedMessageId === message.id ? (
-                            <Check className="h-3 w-3 text-green-500" />
-                          ) : (
-                            <Copy className="h-3 w-3" />
+                        <>
+                          {message.id === lastAssistantId && !isBusy && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 gap-1 px-1.5 opacity-0 transition-all duration-200 group-hover:opacity-100 hover:bg-slate-100 dark:hover:bg-slate-700"
+                              onClick={handleRegenerate}
+                              title="Regenerate response"
+                            >
+                              <RotateCcw className="h-3 w-3" />
+                              <span className="hidden sm:inline">Regenerate</span>
+                            </Button>
                           )}
-                        </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-all duration-200 hover:bg-slate-100 dark:hover:bg-slate-700"
+                            onClick={() =>
+                              copyToClipboard(message.content, message.id)
+                            }
+                          >
+                            {copiedMessageId === message.id ? (
+                              <Check className="h-3 w-3 text-green-500" />
+                            ) : (
+                              <Copy className="h-3 w-3" />
+                            )}
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -459,6 +562,7 @@ export function ChatInterface({
                         content={typingMessage.content}
                         onComplete={handleTypingComplete}
                         speed={20}
+                        skip={skipTyping}
                       />
                     </div>
                   </div>
@@ -545,9 +649,23 @@ export function ChatInterface({
                   setPendingImage(null);
                   setImageError(null);
                 }}
-                disabled={isLoading}
+                disabled={isBusy}
               >
                 <X className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+          {isBusy && (
+            <div className="mb-2 flex justify-center">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleStop}
+                className="h-8 gap-2 rounded-full border-slate-300 bg-white/90 text-xs text-slate-700 shadow-sm hover:border-red-300 hover:bg-red-50 hover:text-red-600 dark:border-slate-600 dark:bg-slate-800/90 dark:text-slate-200 dark:hover:border-red-800 dark:hover:bg-red-950/40 dark:hover:text-red-400"
+              >
+                <Square className="h-3 w-3 fill-current" />
+                {isLoading ? "Stop generating" : "Skip animation"}
               </Button>
             </div>
           )}
@@ -558,7 +676,7 @@ export function ChatInterface({
               accept="image/jpeg,image/png,image/webp"
               className="hidden"
               onChange={handleImageSelect}
-              disabled={isLoading}
+              disabled={isBusy}
             />
             <Textarea
               ref={textareaRef}
@@ -571,7 +689,7 @@ export function ChatInterface({
                   : "Ask me anything or upload an image..."
               }
               className="min-h-[56px] max-h-32 min-w-0 flex-1 resize-none border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
-              disabled={isLoading}
+              disabled={isBusy}
             />
             <div className="flex shrink-0 items-center gap-1 self-end">
               <Button
@@ -580,18 +698,29 @@ export function ChatInterface({
                 size="sm"
                 className="h-10 w-10 rounded-xl p-0 text-slate-500 hover:bg-slate-100 hover:text-cyan-600 dark:hover:bg-slate-800 dark:hover:text-cyan-400"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={isLoading}
+                disabled={isBusy}
                 title="Upload image"
               >
                 <ImagePlus className="h-5 w-5" />
               </Button>
-              <Button
-                type="submit"
-                disabled={(!input.trim() && !pendingImage) || isLoading}
-                className="h-10 w-10 rounded-xl border-0 bg-gradient-to-r from-cyan-600 to-indigo-600 p-0 shadow-lg transition-all duration-200 hover:scale-[1.02] hover:from-cyan-700 hover:to-indigo-700 hover:shadow-xl disabled:from-slate-300 disabled:to-slate-400"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
+              {isBusy ? (
+                <Button
+                  type="button"
+                  onClick={handleStop}
+                  className="h-10 w-10 rounded-xl border-0 bg-red-500 p-0 shadow-lg transition-all duration-200 hover:bg-red-600 hover:shadow-xl"
+                  title="Stop"
+                >
+                  <Square className="h-4 w-4 fill-white text-white" />
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  disabled={!input.trim() && !pendingImage}
+                  className="h-10 w-10 rounded-xl border-0 bg-gradient-to-r from-cyan-600 to-indigo-600 p-0 shadow-lg transition-all duration-200 hover:scale-[1.02] hover:from-cyan-700 hover:to-indigo-700 hover:shadow-xl disabled:from-slate-300 disabled:to-slate-400"
+                >
+                  <Send className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </div>
           {imageError && (

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
 import type { Chat } from "@/types/chat";
+import type { AuthUser } from "@/types/auth";
 import {
   Plus,
   Trash2,
@@ -18,6 +19,7 @@ import {
   X,
   Star,
   Pin,
+  LogOut,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -27,15 +29,30 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+
+function getUserInitials(user: AuthUser): string {
+  const name = user.name?.trim();
+  if (name) {
+    const parts = name.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) {
+      return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+    }
+    return name.slice(0, 2).toUpperCase();
+  }
+  return user.email.slice(0, 2).toUpperCase();
+}
 
 interface ChatSidebarProps {
   chats: Chat[];
   activeChat: string | null;
+  user: AuthUser | null;
   onSelectChat: (chatId: string) => void;
   onDeleteChat: (chatId: string) => void;
   onRenameChat: (chatId: string, newTitle: string) => void;
   onTogglePin: (chatId: string) => void;
   onNewChat: () => void;
+  onLogout: () => void;
   width: number;
   onWidthChange: (width: number) => void;
 }
@@ -43,11 +60,13 @@ interface ChatSidebarProps {
 export function ChatSidebar({
   chats,
   activeChat,
+  user,
   onSelectChat,
   onDeleteChat,
   onRenameChat,
   onTogglePin,
   onNewChat,
+  onLogout,
   width,
   onWidthChange,
 }: ChatSidebarProps) {
@@ -466,9 +485,36 @@ export function ChatSidebar({
 
         {/* Footer */}
         <div className="border-t border-slate-200/70 p-3 dark:border-slate-800/80">
-          <div className="text-xs text-slate-500 dark:text-slate-400 text-center">
-            AI Tutor v1.0
-          </div>
+          {user && (
+            <div className="mb-3 overflow-hidden rounded-xl border border-slate-200/80 bg-gradient-to-br from-slate-50 to-cyan-50/40 shadow-sm dark:border-slate-700/80 dark:from-slate-800/80 dark:to-cyan-950/20">
+              <div className="flex items-center gap-2.5 p-2.5">
+                <Avatar className="h-9 w-9 ring-2 ring-white/80 dark:ring-slate-700/80">
+                  <AvatarFallback className="bg-gradient-to-br from-cyan-600 to-indigo-600 text-xs font-semibold text-white">
+                    {getUserInitials(user)}
+                  </AvatarFallback>
+                </Avatar>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
+                    {user.name || "Student"}
+                  </p>
+                  <p className="truncate text-[11px] text-slate-500 dark:text-slate-400">
+                    {user.email}
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={onLogout}
+                className="flex w-full items-center justify-center gap-2 border-t border-slate-200/70 px-2.5 py-2 text-xs font-medium text-slate-600 transition-colors hover:bg-white/50 hover:text-red-600 dark:border-slate-700/70 dark:text-slate-400 dark:hover:bg-slate-900/40 dark:hover:text-red-400"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                Sign out
+              </button>
+            </div>
+          )}
+          <p className="text-center text-[10px] font-medium tracking-wide text-slate-400 dark:text-slate-500">
+            AI Tutor <span className="text-slate-300 dark:text-slate-600">·</span> v1.0
+          </p>
         </div>
       </div>
 

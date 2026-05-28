@@ -1,23 +1,41 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { ChatSidebar } from "@/components/chat-sidebar";
 import { ChatInterface } from "@/components/chat-interface";
+import { AuthGuard } from "@/components/auth-guard";
 import { Button } from "@/components/ui/button";
 import { Menu, Plus, Sparkles } from "lucide-react";
 import type { Chat, Message } from "@/types/chat";
+import type { AuthUser } from "@/types/auth";
+import { chatsStorageKey, getStoredUser } from "@/lib/auth";
+import { authApi } from "@/utils/auth-api";
 import { motion, AnimatePresence } from "framer-motion";
 
-export default function ChatApp() {
+function ChatAppContent() {
+  const router = useRouter();
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [chats, setChats] = useState<Chat[]>([]);
   const [activeChat, setActiveChat] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [sidebarWidth, setSidebarWidth] = useState(280);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Load chats from localStorage on mount
+  const createEmptyChat = (): Chat => ({
+    id: Date.now().toString(),
+    title: "New conversation",
+    messages: [],
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  });
+
   useEffect(() => {
-    const savedChats = localStorage.getItem("ai-tutor-chats");
+    const currentUser = getStoredUser();
+    setUser(currentUser);
+
+    const storageKey = chatsStorageKey(currentUser?.id);
+    const savedChats = localStorage.getItem(storageKey);
     const savedSidebarWidth = localStorage.getItem("ai-tutor-sidebar-width");
 
     if (savedSidebarWidth) {
@@ -25,11 +43,11 @@ export default function ChatApp() {
     }
 
     if (savedChats) {
-      const parsedChats = JSON.parse(savedChats).map((chat: any) => ({
+      const parsedChats = JSON.parse(savedChats).map((chat: Chat) => ({
         ...chat,
         createdAt: new Date(chat.createdAt),
         updatedAt: new Date(chat.updatedAt),
-        messages: chat.messages.map((message: any) => ({
+        messages: chat.messages.map((message: Message) => ({
           ...message,
           timestamp: new Date(message.timestamp),
         })),
@@ -43,63 +61,47 @@ export default function ChatApp() {
         setChats(nonEmptyChats);
         setActiveChat(nonEmptyChats[0].id);
       } else {
-        const newChat: Chat = {
-          id: Date.now().toString(),
-          title: "New conversation",
-          messages: [],
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
+        const newChat = createEmptyChat();
         setChats([newChat]);
         setActiveChat(newChat.id);
       }
     } else {
-      const newChat: Chat = {
-        id: Date.now().toString(),
-        title: "New conversation",
-        messages: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
+      const newChat = createEmptyChat();
       setChats([newChat]);
       setActiveChat(newChat.id);
     }
     setIsInitialized(true);
   }, []);
 
-  // Save chats to localStorage whenever chats change
   useEffect(() => {
-    if (isInitialized && chats.length > 0) {
-      localStorage.setItem("ai-tutor-chats", JSON.stringify(chats));
+    if (isInitialized && chats.length > 0 && user) {
+      localStorage.setItem(chatsStorageKey(user.id), JSON.stringify(chats));
     }
-  }, [chats, isInitialized]);
+  }, [chats, isInitialized, user]);
 
-  // Save sidebar width to localStorage
   useEffect(() => {
     localStorage.setItem("ai-tutor-sidebar-width", sidebarWidth.toString());
   }, [sidebarWidth]);
 
+  const handleLogout = () => {
+    authApi.logout();
+    router.replace("/login");
+  };
+
   const createNewChat = () => {
-    const newChat: Chat = {
-      id: Date.now().toString(),
-      title: "New conversation",
-      messages: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    const newChat = createEmptyChat();
     setChats((prev) => [newChat, ...prev]);
     setActiveChat(newChat.id);
   };
 
   const updateChat = (chatId: string, updates: Partial<Chat>) => {
-    setChats((prev) => {
-      const updated = prev.map((chat) =>
+    setChats((prev) =>
+      prev.map((chat) =>
         chat.id === chatId
           ? { ...chat, ...updates, updatedAt: new Date() }
           : chat
-      );
-      return updated;
-    });
+      )
+    );
   };
 
   const deleteChat = (chatId: string) => {
@@ -108,13 +110,7 @@ export default function ChatApp() {
       if (activeChat === chatId && filtered.length > 0) {
         setActiveChat(filtered[0].id);
       } else if (filtered.length === 0) {
-        const newChat: Chat = {
-          id: Date.now().toString(),
-          title: "New conversation",
-          messages: [],
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
+        const newChat = createEmptyChat();
         setActiveChat(newChat.id);
         return [newChat];
       }
@@ -135,20 +131,28 @@ export default function ChatApp() {
   };
 
   const addMessage = (chatId: string, message: Message) => {
-    setChats((prev) => {
-      const updated = prev.map((chat) => {
+    setChats((prev) =>
+      prev.map((chat) => {
         if (chat.id === chatId) {
-          const newMessages = [...chat.messages, message];
           return {
             ...chat,
-            messages: newMessages,
+            messages: [...chat.messages, message],
             updatedAt: new Date(),
           };
         }
         return chat;
-      });
-      return updated;
-    });
+      })
+    );
+  };
+
+  const setChatMessages = (chatId: string, messages: Message[]) => {
+    setChats((prev) =>
+      prev.map((chat) =>
+        chat.id === chatId
+          ? { ...chat, messages, updatedAt: new Date() }
+          : chat
+      )
+    );
   };
 
   const updateChatTitle = (chatId: string, firstMessage: string) => {
@@ -163,9 +167,9 @@ export default function ChatApp() {
 
   if (!isInitialized) {
     return (
-      <div className="flex h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 items-center justify-center">
+      <div className="flex h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-r from-sky-500 to-purple-500 rounded-lg flex items-center justify-center animate-pulse">
+          <div className="flex h-8 w-8 animate-pulse items-center justify-center rounded-lg bg-gradient-to-r from-cyan-600 to-indigo-600">
             <Sparkles className="h-4 w-4 text-white" />
           </div>
           <span className="text-slate-600 dark:text-slate-400">
@@ -188,7 +192,7 @@ export default function ChatApp() {
         animate={{ x: [0, -16, 0], y: [0, 12, 0], scale: [1, 1.04, 1] }}
         transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
       />
-      {/* Sidebar */}
+
       <AnimatePresence mode="wait">
         {sidebarOpen && (
           <motion.div
@@ -201,11 +205,13 @@ export default function ChatApp() {
             <ChatSidebar
               chats={chats}
               activeChat={activeChat}
+              user={user}
               onSelectChat={setActiveChat}
               onDeleteChat={deleteChat}
               onRenameChat={renameChat}
               onTogglePin={togglePinChat}
               onNewChat={createNewChat}
+              onLogout={handleLogout}
               width={sidebarWidth}
               onWidthChange={setSidebarWidth}
             />
@@ -213,34 +219,32 @@ export default function ChatApp() {
         )}
       </AnimatePresence>
 
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
+      <div className="flex min-w-0 flex-1 flex-col">
         <motion.div
           initial={{ y: -20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
-          className="bg-white/70 dark:bg-slate-900/80 backdrop-blur-2xl border-b border-slate-200/70 dark:border-slate-800/80 p-4 flex items-center justify-between"
+          className="flex items-center justify-between border-b border-slate-200/70 bg-white/70 p-4 backdrop-blur-2xl dark:border-slate-800/80 dark:bg-slate-900/80"
         >
           <div className="flex items-center gap-3">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+              className="transition-colors hover:bg-slate-100 dark:hover:bg-slate-800"
             >
               <Menu className="h-5 w-5" />
             </Button>
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-cyan-500 to-indigo-500 rounded-lg flex items-center justify-center">
+              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r from-cyan-500 to-indigo-500">
                 <Sparkles className="h-4 w-4 text-white" />
               </div>
               <div>
-                <h1 className="text-lg font-semibold bg-gradient-to-r from-slate-900 to-slate-600 dark:from-slate-100 dark:to-slate-400 bg-clip-text text-transparent">
+                <h1 className="bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-lg font-semibold text-transparent dark:from-slate-100 dark:to-slate-400">
                   {currentChat?.title || "AI Tutor"}
                 </h1>
                 <div className="flex items-center gap-2">
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Your intelligent learning companion
+                    {user?.name || user?.email || "Signed in"}
                   </p>
                   <span className="rounded-full border border-cyan-200 bg-cyan-50 px-2 py-0.5 text-[10px] font-medium text-cyan-700 dark:border-cyan-900 dark:bg-cyan-950/30 dark:text-cyan-300">
                     {chats.length} chats
@@ -251,73 +255,33 @@ export default function ChatApp() {
           </div>
           <Button
             onClick={createNewChat}
-            className="bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-700 hover:to-indigo-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
+            className="border-0 bg-gradient-to-r from-cyan-600 to-indigo-600 text-white shadow-lg transition-all duration-200 hover:from-cyan-700 hover:to-indigo-700 hover:shadow-xl"
           >
-            <Plus className="h-4 w-4 mr-2" />
+            <Plus className="mr-2 h-4 w-4" />
             New Chat
           </Button>
         </motion.div>
 
-        {/* Chat Interface */}
-        <div className="flex-1 min-h-0">
+        <div className="min-h-0 flex-1">
           {currentChat ? (
             <ChatInterface
               key={currentChat.id}
               chat={currentChat}
               onAddMessage={addMessage}
+              onSetMessages={setChatMessages}
               onUpdateTitle={updateChatTitle}
             />
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex items-center justify-center h-full"
-            >
-              <div className="text-center max-w-md mx-auto p-8">
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                  className="w-20 h-20 bg-gradient-to-r from-sky-500 to-purple-500 rounded-2xl flex items-center justify-center mx-auto mb-6"
-                >
-                  <Sparkles className="h-10 w-10 text-white" />
-                </motion.div>
-                <motion.h2
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.3 }}
-                  className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 dark:from-slate-100 dark:to-slate-400 bg-clip-text text-transparent mb-4"
-                >
-                  Welcome to AI Tutor
-                </motion.h2>
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.4 }}
-                  className="text-slate-600 dark:text-slate-400 mb-8 leading-relaxed"
-                >
-                  Your intelligent learning companion is ready to help you
-                  understand complex topics, solve problems, and accelerate your
-                  learning journey.
-                </motion.p>
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.5 }}
-                >
-                  <Button
-                    onClick={createNewChat}
-                    className="bg-gradient-to-r from-sky-500 to-purple-500 hover:from-sky-600 hover:to-purple-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200 px-8 py-3 text-lg"
-                  >
-                    <Plus className="h-5 w-5 mr-2" />
-                    Start Learning
-                  </Button>
-                </motion.div>
-              </div>
-            </motion.div>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
+  );
+}
+
+export default function ChatPage() {
+  return (
+    <AuthGuard>
+      <ChatAppContent />
+    </AuthGuard>
   );
 }

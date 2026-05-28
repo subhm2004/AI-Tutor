@@ -221,7 +221,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <Button asChild className="h-9 rounded-lg px-4">
-              <Link href="/chat">Open App</Link>
+              <Link href="/login">Open App</Link>
             </Button>
           </div>
         </nav>
@@ -269,13 +269,13 @@ export default function LandingPage() {
             asChild
             className="h-11 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 px-6 text-white shadow-lg transition-all duration-200 hover:scale-[1.02] hover:from-cyan-700 hover:to-indigo-700"
           >
-            <Link href="/chat">
+            <Link href="/login">
               Start Learning
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           </Button>
           <Button asChild variant="outline" className="h-11 rounded-xl px-6">
-            <Link href="/chat">Try Demo Chat</Link>
+            <Link href="/login">Try Demo Chat</Link>
           </Button>
         </motion.div>
 
@@ -333,7 +333,7 @@ export default function LandingPage() {
                 </li>
               </ul>
               <Button asChild className="mt-5 w-full rounded-xl">
-                <Link href="/chat">Start This Experience</Link>
+                <Link href="/login">Start This Experience</Link>
               </Button>
             </div>
           </div>
@@ -489,7 +489,7 @@ export default function LandingPage() {
               asChild
               className="h-11 rounded-xl bg-white px-6 text-cyan-700 hover:bg-slate-100"
             >
-              <Link href="/chat">
+              <Link href="/login">
                 Open AI Tutor
                 <Brain className="ml-2 h-4 w-4" />
               </Link>
@@ -540,7 +540,7 @@ export default function LandingPage() {
                 asChild
                 className="mt-5 h-10 rounded-lg bg-gradient-to-r from-cyan-600 to-indigo-600 text-white hover:from-cyan-700 hover:to-indigo-700"
               >
-                <Link href="/chat">
+                <Link href="/login">
                   Start free
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Link>

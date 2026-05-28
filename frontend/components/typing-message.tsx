@@ -8,12 +8,14 @@ interface TypingMessageProps {
   content: string;
   onComplete: () => void;
   speed?: number;
+  skip?: boolean;
 }
 
 export function TypingMessage({
   content,
   onComplete,
   speed = 30,
+  skip = false,
 }: TypingMessageProps) {
   const [displayedContent, setDisplayedContent] = useState("");
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -43,6 +45,14 @@ export function TypingMessage({
     setCurrentIndex(0);
     setIsComplete(false);
   }, [content]);
+
+  useEffect(() => {
+    if (!skip || isComplete) return;
+    setDisplayedContent(content);
+    setCurrentIndex(content.length);
+    setIsComplete(true);
+    onComplete();
+  }, [skip, content, isComplete, onComplete]);
 
   return (
     <div className="relative">

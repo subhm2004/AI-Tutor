@@ -1,35 +1,42 @@
 from flask import Flask, jsonify, request
 from dotenv import load_dotenv
 from agents.tutor_agent import TutorAgent
+from auth.decorators import jwt_required
+from auth.routes import auth_bp
+from database import init_db
 from flask_cors import CORS
-
-
-app = Flask(__name__)
-CORS(app, resources={r"/*": {"origins": "*"}})
-tutor_agent = TutorAgent()
 
 load_dotenv()
 
+app = Flask(__name__)
+CORS(
+    app,
+    resources={r"/*": {"origins": "*"}},
+    supports_credentials=True,
+    allow_headers=["Content-Type", "Authorization"],
+)
+app.register_blueprint(auth_bp)
 
-@app.route("/",methods=["GET"])
+init_db()
+tutor_agent = TutorAgent()
+
+
+@app.route("/", methods=["GET"])
 def hello():
-    return {"message":"hello world"}
+    return {"message": "hello world"}
+
 
 @app.route("/api/chat", methods=["POST"])
+@jwt_required
 def chat():
-    # will have to introduce chat id based messages retrieval, since frontend might not be able to send in all messages from frontend 
     try:
         data = request.get_json()
-        messages = data.get("messages",[])
+        messages = data.get("messages", [])
 
         if not messages:
             return jsonify({"error": "Missing messages"}), 400
 
         response = tutor_agent.route(messages)
-        messages.append({
-            "role": "assistant",
-            "content": response.get("response", "")
-        })
         return jsonify(response)
 
     except Exception as e:
@@ -37,6 +44,7 @@ def chat():
 
 
 @app.route("/api/chat/image", methods=["POST"])
+@jwt_required
 def chat_image():
     try:
         data = request.get_json() or {}
@@ -53,22 +61,25 @@ def chat_image():
     except Exception as e:
         return jsonify({"error": f"Server error: {str(e)}"}), 500
 
-# @app.route("/ask", methods=["GET"])
-# def ask_question():
-#     data = request.args
-#     question = data.get("question")
-#     return jsonify(TutorAgent().route(question))
 
 @app.route("/api/health", methods=["GET"])
 def health():
     return jsonify({"status": "ok", "message": "Tutor system is healthy."}), 200
 
+
 @app.route("/api/agents", methods=["GET"])
 def agent_status():
     return jsonify({
-        "available_agents": ["TutorAgent", "MathAgent", "PhysicsAgent", "ChemistryAgent", "HistoryAgent"],
-        "status": "all agents loaded"
+        "available_agents": [
+            "TutorAgent",
+            "MathAgent",
+            "PhysicsAgent",
+            "ChemistryAgent",
+            "HistoryAgent",
+        ],
+        "status": "all agents loaded",
     })
+
 
 if __name__ == "__main__":
     app.run(debug=True)

@@ -1,4 +1,5 @@
 import type { ChatResponse, ImageChatPayload } from "@/types/chat"
+import { clearAuth, getAuthHeaders } from "@/lib/auth"
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://127.0.0.1:5000"
 
@@ -7,40 +8,28 @@ interface ChatMessage {
   content: string
 }
 
+async function handleAuthError(response: Response): Promise<void> {
+  if (response.status === 401 && typeof window !== "undefined") {
+    clearAuth()
+    window.location.href = "/login"
+    throw new Error("Session expired. Please sign in again.")
+  }
+}
+
 export const chatApi = {
-  async sendMessage(messages: ChatMessage[]): Promise<ChatResponse> {
+  async sendMessage(
+    messages: ChatMessage[],
+    signal?: AbortSignal
+  ): Promise<ChatResponse> {
     try {
       const response = await fetch(`${BACKEND_URL}/api/chat`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          messages: messages,
-        }),
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ messages }),
+        signal,
       })
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-
-      const data = await response.json()
-      return data
-    } catch (error) {
-      console.error("API Error:", error)
-      throw new Error("Failed to send message to backend")
-    }
-  },
-
-  async sendImageMessage(payload: ImageChatPayload): Promise<ChatResponse> {
-    try {
-      const response = await fetch(`${BACKEND_URL}/api/chat/image`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(payload),
-      })
+      await handleAuthError(response)
 
       if (!response.ok) {
         const err = await response.json().catch(() => ({}))
@@ -49,6 +38,40 @@ export const chatApi = {
 
       return response.json()
     } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        throw error
+      }
+      console.error("API Error:", error)
+      throw error instanceof Error
+        ? error
+        : new Error("Failed to send message to backend")
+    }
+  },
+
+  async sendImageMessage(
+    payload: ImageChatPayload,
+    signal?: AbortSignal
+  ): Promise<ChatResponse> {
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/chat/image`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(payload),
+        signal,
+      })
+
+      await handleAuthError(response)
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}))
+        throw new Error(err.error || `HTTP error! status: ${response.status}`)
+      }
+
+      return response.json()
+    } catch (error) {
+      if (error instanceof Error && error.name === "AbortError") {
+        throw error
+      }
       console.error("Image API Error:", error)
       throw error instanceof Error
         ? error

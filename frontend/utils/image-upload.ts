@@ -17,6 +17,14 @@ export function validateImageFile(file: File): string | null {
   return null;
 }
 
+export function parseDataUrlImage(
+  dataUrl: string
+): { base64: string; mimeType: string } | null {
+  const match = dataUrl.match(/^data:([^;]+);base64,(.+)$/);
+  if (!match) return null;
+  return { mimeType: match[1], base64: match[2] };
+}
+
 export async function prepareImageForUpload(file: File): Promise<PreparedImage> {
   const error = validateImageFile(file);
   if (error) {
