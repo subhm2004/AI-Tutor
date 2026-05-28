@@ -20,6 +20,9 @@ import {
   X,
   Square,
   RotateCcw,
+  Clock,
+  Atom,
+  type LucideIcon,
 } from "lucide-react";
 import { chatApi } from "@/utils/api";
 import {
@@ -312,11 +315,31 @@ export function ChatInterface({
     });
   };
 
-  const suggestedPrompts = [
-    "Why do objects fall at the same rate regardless of their mass?",
-    "How do you calculate the derivative of a function like f(x) = x² + 3x?",
-    "What happens when you mix an acid with a base?",
-    "What were the main causes of World War I?",
+  const suggestedPrompts: { text: string; icon: LucideIcon }[] = [
+    {
+      text: "In special relativity, is time absolute or relative? Explain with a simple example.",
+      icon: Clock,
+    },
+    {
+      text: "Why do objects fall at the same rate in a vacuum regardless of their mass?",
+      icon: BookOpen,
+    },
+    {
+      text: "How do you find the derivative of f(x) = x² + 3x using the power rule?",
+      icon: Lightbulb,
+    },
+    {
+      text: "What happens when you mix a strong acid with a strong base?",
+      icon: Atom,
+    },
+    {
+      text: "What were the main long-term causes of World War I?",
+      icon: Sparkles,
+    },
+    {
+      text: "How does time dilation work when something moves close to the speed of light?",
+      icon: Bot,
+    },
   ];
 
   return (
@@ -381,36 +404,25 @@ export function ChatInterface({
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.5 }}
-                className="grid grid-cols-1 md:grid-cols-2 gap-3 max-w-2xl mx-auto"
+                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 max-w-4xl mx-auto"
               >
-                {suggestedPrompts.map((prompt, index) => (
+                {suggestedPrompts.map(({ text, icon: Icon }, index) => (
                   <motion.button
-                    key={prompt}
+                    key={text}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.6 + index * 0.1 }}
+                    transition={{ delay: 0.6 + index * 0.08 }}
                     whileHover={{ y: -4, scale: 1.01 }}
                     whileTap={{ scale: 0.985 }}
-                    onClick={() => setInput(prompt)}
+                    onClick={() => setInput(text)}
                     className="p-4 text-left bg-white/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-cyan-300 dark:hover:border-cyan-700 hover:shadow-md transition-all duration-200 group"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 bg-gradient-to-r from-cyan-100 to-indigo-100 dark:from-cyan-900/60 dark:to-indigo-900/60 rounded-lg flex items-center justify-center group-hover:from-cyan-200 group-hover:to-indigo-200 dark:group-hover:from-cyan-800/60 dark:group-hover:to-indigo-800/60 transition-colors">
-                        {index === 0 && (
-                          <BookOpen className="h-4 w-4 text-cyan-700 dark:text-cyan-300" />
-                        )}
-                        {index === 1 && (
-                          <Lightbulb className="h-4 w-4 text-cyan-700 dark:text-cyan-300" />
-                        )}
-                        {index === 2 && (
-                          <Bot className="h-4 w-4 text-cyan-700 dark:text-cyan-300" />
-                        )}
-                        {index === 3 && (
-                          <Sparkles className="h-4 w-4 text-cyan-700 dark:text-cyan-300" />
-                        )}
+                      <div className="w-8 h-8 bg-gradient-to-r from-cyan-100 to-indigo-100 dark:from-cyan-900/60 dark:to-indigo-900/60 rounded-lg flex items-center justify-center group-hover:from-cyan-200 group-hover:to-indigo-200 dark:group-hover:from-cyan-800/60 dark:group-hover:to-indigo-800/60 transition-colors shrink-0">
+                        <Icon className="h-4 w-4 text-cyan-700 dark:text-cyan-300" />
                       </div>
                       <span className="text-sm text-slate-700 dark:text-slate-300 group-hover:text-cyan-700 dark:group-hover:text-cyan-300 transition-colors">
-                        {prompt}
+                        {text}
                       </span>
                     </div>
                   </motion.button>

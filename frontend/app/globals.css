@@ -31,15 +31,24 @@ body {
 }
 
 .animate-testimonial-marquee {
-  animation: testimonial-marquee 40s linear infinite;
+  animation: testimonial-marquee 36s linear infinite;
+  will-change: transform;
 }
 
 .animate-testimonial-marquee-reverse {
-  animation: testimonial-marquee-reverse 45s linear infinite;
+  animation: testimonial-marquee-reverse 42s linear infinite;
+  will-change: transform;
 }
 
-.animate-testimonial-marquee:hover,
-.animate-testimonial-marquee-reverse:hover {
+@media (prefers-reduced-motion: reduce) {
+  .animate-testimonial-marquee,
+  .animate-testimonial-marquee-reverse {
+    animation: none;
+  }
+}
+
+.marquee-viewport:hover .animate-testimonial-marquee,
+.marquee-viewport:hover .animate-testimonial-marquee-reverse {
   animation-play-state: paused;
 }
 

@@ -18,8 +18,12 @@ import {
   ShieldCheck,
   Star,
   CheckCircle2,
+  Clock,
+  ImagePlus,
+  LogIn,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { TestimonialsMarquee } from "@/components/testimonials-marquee";
 
 const features = [
   {
@@ -70,7 +74,7 @@ const testimonials = [
     role: "Class 12 · Science",
     subject: "Physics",
     quote:
-      "Derivatives and motion problems finally made sense. Explanations are short, clear, and exam-friendly.",
+      "Special relativity finally clicked — time dilation explained better than my textbook.",
     rating: 5,
   },
   {
@@ -78,7 +82,7 @@ const testimonials = [
     role: "Undergrad · Chemistry",
     subject: "Chemistry",
     quote:
-      "I use it for quick revision before tests. The step-by-step breakdown saves me hours every week.",
+      "I use it for quick revision before tests. Step-by-step chemistry saves me hours every week.",
     rating: 5,
   },
   {
@@ -86,51 +90,68 @@ const testimonials = [
     role: "Self-learner",
     subject: "History",
     quote:
-      "Love that I can ask follow-up questions in one thread. Feels like a patient tutor, not a textbook.",
+      "Follow-up questions in one thread feel like a patient tutor, not a wall of text.",
+    rating: 5,
+  },
+  {
+    name: "Priya S.",
+    role: "JEE aspirant",
+    subject: "Math",
+    quote:
+      "Calculus doubts at midnight — clear LaTeX steps and I can regenerate if I want another explanation.",
+    rating: 5,
+  },
+  {
+    name: "Kabir D.",
+    role: "Class 11 · PCM",
+    subject: "Physics",
+    quote:
+      "Uploaded a diagram from my notebook and got a proper explanation. Huge for homework.",
+    rating: 5,
+  },
+  {
+    name: "Ananya T.",
+    role: "College · Humanities",
+    subject: "History",
+    quote:
+      "WWI causes revision in 10 minutes. Clean UI, no clutter — just learning.",
     rating: 5,
   },
 ];
 
-type Testimonial = (typeof testimonials)[number];
-
-function TestimonialCard({ item }: { item: Testimonial }) {
-  return (
-    <article className="w-[min(100vw-3rem,380px)] shrink-0 rounded-2xl border border-slate-200/80 bg-white/90 p-5 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/80">
-      <div className="flex items-center gap-1">
-        {Array.from({ length: item.rating }).map((_, i) => (
-          <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />
-        ))}
-      </div>
-      <p className="mt-4 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
-        &ldquo;{item.quote}&rdquo;
-      </p>
-      <div className="mt-5 flex items-center justify-between border-t border-slate-200/80 pt-4 dark:border-slate-800">
-        <div>
-          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-            {item.name}
-          </p>
-          <p className="text-xs text-slate-500 dark:text-slate-400">{item.role}</p>
-        </div>
-        <span className="rounded-full bg-cyan-50 px-2.5 py-1 text-xs font-medium text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-300">
-          {item.subject}
-        </span>
-      </div>
-    </article>
-  );
-}
+const howItWorks = [
+  {
+    step: "01",
+    title: "Sign in & ask",
+    description: "Create an account and type any doubt — text or image.",
+    icon: LogIn,
+  },
+  {
+    step: "02",
+    title: "Smart subject routing",
+    description: "AI picks Math, Physics, Chemistry, or History automatically.",
+    icon: Brain,
+  },
+  {
+    step: "03",
+    title: "Learn & revise",
+    description: "Pin chats, regenerate answers, and pick up where you left off.",
+    icon: GraduationCap,
+  },
+];
 
 const footerLinks = {
   product: [
     { label: "Features", href: "#features" },
-    { label: "How it works", href: "#preview" },
+    { label: "How it works", href: "#how-it-works" },
     { label: "Testimonials", href: "#testimonials" },
-    { label: "Open Chat", href: "/chat" },
+    { label: "Open Chat", href: "/login" },
   ],
   subjects: [
-    { label: "Mathematics", href: "/chat" },
-    { label: "Physics", href: "/chat" },
-    { label: "Chemistry", href: "/chat" },
-    { label: "History", href: "/chat" },
+    { label: "Mathematics", href: "/login" },
+    { label: "Physics", href: "/login" },
+    { label: "Chemistry", href: "/login" },
+    { label: "History", href: "/login" },
   ],
 };
 
@@ -218,10 +239,24 @@ export default function LandingPage() {
               </p>
             </div>
           </div>
+          <div className="hidden items-center gap-6 text-sm font-medium text-slate-600 md:flex dark:text-slate-300">
+            <a href="#features" className="transition-colors hover:text-cyan-600 dark:hover:text-cyan-400">
+              Features
+            </a>
+            <a href="#how-it-works" className="transition-colors hover:text-cyan-600 dark:hover:text-cyan-400">
+              How it works
+            </a>
+            <a href="#testimonials" className="transition-colors hover:text-cyan-600 dark:hover:text-cyan-400">
+              Reviews
+            </a>
+          </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
-            <Button asChild className="h-9 rounded-lg px-4">
-              <Link href="/login">Open App</Link>
+            <Button asChild variant="ghost" className="hidden h-9 rounded-lg sm:inline-flex">
+              <Link href="/login">Log in</Link>
+            </Button>
+            <Button asChild className="h-9 rounded-lg bg-gradient-to-r from-cyan-600 to-indigo-600 px-4 text-white">
+              <Link href="/login">Get started</Link>
             </Button>
           </div>
         </nav>
@@ -256,9 +291,9 @@ export default function LandingPage() {
           variants={heroItem}
           className="mt-5 max-w-2xl text-center text-base text-slate-600 sm:text-lg dark:text-slate-300"
         >
-          Ask doubts, practice concepts, and get personalized explanations in
-          Math, Physics, Chemistry, and History - all in one clean chat
-          experience.
+          Ask doubts, upload problem images, and get step-by-step explanations
+          with beautiful math formulas — Math, Physics, Chemistry & History in
+          one focused chat.
         </motion.p>
 
         <motion.div
@@ -305,12 +340,17 @@ export default function LandingPage() {
               </p>
               <div className="space-y-3">
                 <div className="ml-auto max-w-[85%] rounded-2xl bg-gradient-to-r from-cyan-600 to-indigo-600 px-4 py-3 text-sm text-white shadow">
-                  Explain Newton's second law with a real-life example.
+                  In special relativity, is time absolute or relative?
                 </div>
                 <div className="max-w-[92%] rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
-                  Newton's second law says force = mass x acceleration. Example:
-                  pushing an empty vs loaded shopping cart - heavier cart needs
-                  more force for same acceleration.
+                  <span className="mb-2 inline-block rounded-full bg-cyan-50 px-2 py-0.5 text-[10px] font-medium text-cyan-700 dark:bg-cyan-950/50 dark:text-cyan-300">
+                    Physics Agent
+                  </span>
+                  <br />
+                  In special relativity, time is <strong>relative</strong> — not
+                  absolute. Moving clocks tick slower (time dilation). Two
+                  observers can disagree on &ldquo;now&rdquo; without either being
+                  wrong.
                 </div>
               </div>
             </div>
@@ -353,6 +393,42 @@ export default function LandingPage() {
             </div>
           ))}
         </motion.div>
+
+        <motion.section
+          id="how-it-works"
+          variants={heroItem}
+          className="mt-16 w-full"
+        >
+          <div className="text-center">
+            <p className="text-sm font-medium uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
+              How it works
+            </p>
+            <h2 className="mt-2 text-2xl font-bold text-slate-900 sm:text-3xl dark:text-slate-100">
+              Three steps to smarter study
+            </h2>
+          </div>
+          <div className="mt-8 grid gap-4 md:grid-cols-3">
+            {howItWorks.map((item) => (
+              <div
+                key={item.step}
+                className="relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white/90 p-6 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/80"
+              >
+                <span className="text-4xl font-bold text-cyan-500/20 dark:text-cyan-400/15">
+                  {item.step}
+                </span>
+                <div className="mt-3 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 text-white">
+                  <item.icon className="h-5 w-5" />
+                </div>
+                <h3 className="mt-4 font-semibold text-slate-900 dark:text-slate-100">
+                  {item.title}
+                </h3>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                  {item.description}
+                </p>
+              </div>
+            ))}
+          </div>
+        </motion.section>
 
         <motion.div
           id="features"
@@ -432,49 +508,18 @@ export default function LandingPage() {
           </div>
         </motion.div>
 
-        <motion.section
-          id="testimonials"
-          variants={heroItem}
-          className="mt-16 w-full"
-        >
-          <div className="text-center">
-            <p className="text-sm font-medium uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
-              Testimonials
-            </p>
-            <h2 className="mt-2 text-2xl font-bold text-slate-900 sm:text-3xl dark:text-slate-100">
-              Students actually enjoy learning here
-            </h2>
-            <p className="mx-auto mt-3 max-w-2xl text-sm text-slate-600 sm:text-base dark:text-slate-400">
-              Real feedback from learners using AI Tutor for doubts, revision,
-              and exam prep across subjects.
-            </p>
-          </div>
+      </motion.section>
 
-          <div className="relative mt-10 w-full overflow-hidden">
-            <div className="pointer-events-none absolute left-0 top-0 z-10 h-full w-12 bg-gradient-to-r from-slate-50 via-slate-50/80 to-transparent dark:from-slate-950 dark:via-slate-950/80 sm:w-20" />
-            <div className="pointer-events-none absolute right-0 top-0 z-10 h-full w-12 bg-gradient-to-l from-slate-50 via-slate-50/80 to-transparent dark:from-slate-950 dark:via-slate-950/80 sm:w-20" />
+      <TestimonialsMarquee items={testimonials} />
 
-            <div className="flex w-max animate-testimonial-marquee gap-4 py-1">
-              {[...testimonials, ...testimonials].map((item, index) => (
-                <TestimonialCard key={`row1-${item.name}-${index}`} item={item} />
-              ))}
-            </div>
-
-            <div className="mt-4 flex w-max animate-testimonial-marquee-reverse gap-4 py-1">
-              {[
-                ...[...testimonials].reverse(),
-                ...[...testimonials].reverse(),
-              ].map((item, index) => (
-                <TestimonialCard key={`row2-${item.name}-${index}`} item={item} />
-              ))}
-            </div>
-          </div>
-        </motion.section>
-
-        <motion.div
-          variants={heroItem}
-          className="mt-14 w-full rounded-3xl border border-cyan-200/80 bg-gradient-to-r from-cyan-600 to-indigo-600 p-8 text-white shadow-xl dark:border-cyan-900"
-        >
+      <motion.section
+        initial={{ opacity: 0, y: 24 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        viewport={{ once: true, margin: "-80px" }}
+        transition={{ duration: 0.5 }}
+        className="mx-auto w-full max-w-6xl px-6 pb-4 pt-4"
+      >
+        <div className="w-full rounded-3xl border border-cyan-200/80 bg-gradient-to-r from-cyan-600 via-cyan-600 to-indigo-600 p-8 text-white shadow-xl dark:border-cyan-900">
           <div className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
             <div>
               <p className="inline-flex items-center gap-2 text-sm font-medium text-white/90">
@@ -495,20 +540,14 @@ export default function LandingPage() {
               </Link>
             </Button>
           </div>
-        </motion.div>
+        </div>
 
-        <motion.div
-          variants={heroItem}
-          className="mt-8 inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/80 px-4 py-2 text-xs text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300"
-        >
+        <div className="mt-8 inline-flex w-full items-center justify-center gap-2 rounded-full border border-slate-200/80 bg-white/80 px-4 py-2 text-xs text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300">
           <Star className="h-3.5 w-3.5 text-amber-500" />
           Built for students who want speed + clarity
-        </motion.div>
+        </div>
 
-        <motion.div
-          variants={heroItem}
-          className="mt-6 grid w-full max-w-4xl grid-cols-2 gap-2 sm:grid-cols-4"
-        >
+        <div className="mt-6 grid w-full grid-cols-2 gap-2 sm:grid-cols-4">
           {socialProof.map((item) => (
             <div
               key={item}
@@ -517,9 +556,46 @@ export default function LandingPage() {
               {item}
             </div>
           ))}
-        </motion.div>
-
+        </div>
       </motion.section>
+
+      <section className="mx-auto w-full max-w-6xl px-6 pb-8">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white/80 p-4 dark:border-slate-800 dark:bg-slate-900/60">
+            <Clock className="h-8 w-8 shrink-0 text-cyan-500" />
+            <div>
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                24/7 availability
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Study anytime, anywhere
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white/80 p-4 dark:border-slate-800 dark:bg-slate-900/60">
+            <ImagePlus className="h-8 w-8 shrink-0 text-indigo-500" />
+            <div>
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                Image questions
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Snap & upload problems
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 rounded-2xl border border-slate-200/80 bg-white/80 p-4 dark:border-slate-800 dark:bg-slate-900/60">
+            <Sparkles className="h-8 w-8 shrink-0 text-amber-500" />
+            <div>
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                LaTeX math & chem
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Clear formulas on screen
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
 
       <footer className="relative mt-4 border-t border-slate-200/80 bg-slate-900 text-slate-300 dark:border-slate-800">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(6,182,212,0.12),transparent_55%)]" />
