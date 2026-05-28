@@ -16,92 +16,23 @@ import {
   Sparkles,
   BookOpen,
   Lightbulb,
+  ImagePlus,
+  X,
 } from "lucide-react";
 import { chatApi } from "@/utils/api";
+import {
+  prepareImageForUpload,
+  type PreparedImage,
+} from "@/utils/image-upload";
 import { motion, AnimatePresence } from "framer-motion";
-import ReactMarkdown from "react-markdown";
-import remarkGfm from "remark-gfm";
 import { TypingMessage } from "@/components/typing-message";
+import { MarkdownMessage } from "@/components/markdown-message";
 
 interface ChatInterfaceProps {
   chat: Chat;
   onAddMessage: (chatId: string, message: Message) => void;
   onUpdateTitle: (chatId: string, firstMessage: string) => void;
 }
-
-// Simple math renderer component
-const MathRenderer = ({
-  children,
-  display = false,
-}: {
-  children: string;
-  display?: boolean;
-}) => {
-  const [rendered, setRendered] = useState<string>("");
-
-  useEffect(() => {
-    const mathContent = String(children || "");
-    const processedContent = mathContent
-      .replace(/\^(\w+|\{[^}]+\})/g, (match, exp) => {
-        const cleanExp = exp.replace(/[{}]/g, "");
-        return `<sup>${cleanExp}</sup>`;
-      })
-      .replace(/_(\w+|\{[^}]+\})/g, (match, sub) => {
-        const cleanSub = sub.replace(/[{}]/g, "");
-        return `<sub>${cleanSub}</sub>`;
-      })
-      .replace(
-        /\\frac\{([^}]+)\}\{([^}]+)\}/g,
-        '<span class="fraction"><span class="numerator">$1</span><span class="denominator">$2</span></span>'
-      )
-      .replace(/\\sqrt\{([^}]+)\}/g, "√($1)")
-      .replace(/\\int/g, "∫")
-      .replace(/\\sum/g, "∑")
-      .replace(/\\prod/g, "∏")
-      .replace(/\\lim/g, "lim")
-      .replace(/\\infty/g, "∞")
-      .replace(/\\alpha/g, "α")
-      .replace(/\\beta/g, "β")
-      .replace(/\\gamma/g, "γ")
-      .replace(/\\delta/g, "δ")
-      .replace(/\\epsilon/g, "ε")
-      .replace(/\\theta/g, "θ")
-      .replace(/\\lambda/g, "λ")
-      .replace(/\\mu/g, "μ")
-      .replace(/\\pi/g, "π")
-      .replace(/\\sigma/g, "σ")
-      .replace(/\\phi/g, "φ")
-      .replace(/\\omega/g, "ω")
-      .replace(/\\leq/g, "≤")
-      .replace(/\\geq/g, "≥")
-      .replace(/\\neq/g, "≠")
-      .replace(/\\approx/g, "≈")
-      .replace(/\\pm/g, "±")
-      .replace(/\\times/g, "×")
-      .replace(/\\div/g, "÷")
-      .replace(/\\cdot/g, "·");
-
-    setRendered(processedContent);
-  }, [children]);
-
-  if (display) {
-    return (
-      <div className="my-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 overflow-x-auto">
-        <div
-          className="text-center text-lg font-mono"
-          dangerouslySetInnerHTML={{ __html: rendered }}
-        />
-      </div>
-    );
-  }
-
-  return (
-    <span
-      className="font-mono mx-1 text-sky-600 dark:text-sky-400"
-      dangerouslySetInnerHTML={{ __html: rendered }}
-    />
-  );
-};
 
 export function ChatInterface({
   chat,
@@ -111,12 +42,15 @@ export function ChatInterface({
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null);
+  const [pendingImage, setPendingImage] = useState<PreparedImage | null>(null);
+  const [imageError, setImageError] = useState<string | null>(null);
   const [typingMessage, setTypingMessage] = useState<{
     id: string;
     content: string;
   } | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Function to scroll to bottom
   const scrollToBottom = () => {
@@ -154,59 +88,88 @@ export function ChatInterface({
     }
   }, [input]);
 
+  const showAssistantReply = (responseContent: string) => {
+    setTypingMessage({
+      id: `assistant-${Date.now()}`,
+      content: responseContent,
+    });
+  };
+
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+
+    setImageError(null);
+    try {
+      const prepared = await prepareImageForUpload(file);
+      setPendingImage(prepared);
+    } catch (err) {
+      setImageError(
+        err instanceof Error ? err.message : "Could not load that image."
+      );
+      setPendingImage(null);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || isLoading) return;
+    const text = input.trim();
+    if ((!text && !pendingImage) || isLoading) return;
 
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: "user",
-      content: input.trim(),
+      content: text || "Question from uploaded image",
       timestamp: new Date(),
+      ...(pendingImage ? { imageUrl: pendingImage.dataUrl } : {}),
     };
 
-    const currentInput = input.trim();
+    const imagePayload = pendingImage;
     setInput("");
+    setPendingImage(null);
+    setImageError(null);
 
-    // Add user message immediately
     onAddMessage(chat.id, userMessage);
 
-    // Update chat title if this is the first message
     if (chat.messages.length === 0) {
-      onUpdateTitle(chat.id, currentInput);
+      onUpdateTitle(
+        chat.id,
+        text || "Image question"
+      );
     }
 
     setIsLoading(true);
 
     try {
-      // Prepare chat history for API
-      const chatHistory = [...chat.messages, userMessage].map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-      }));
+      let response;
+      if (imagePayload) {
+        response = await chatApi.sendImageMessage({
+          image: imagePayload.base64,
+          mimeType: imagePayload.mimeType,
+          text,
+        });
+      } else {
+        const chatHistory = [...chat.messages, userMessage].map((msg) => ({
+          role: msg.role,
+          content: msg.content,
+        }));
+        response = await chatApi.sendMessage(chatHistory);
+      }
 
-      const response = await chatApi.sendMessage(chatHistory);
       const responseContent =
         response.message ||
         response.response ||
         "Sorry, I could not process your request.";
 
-      // Start typing animation
-      const assistantMessageId = `assistant-${Date.now()}`;
-      setTypingMessage({
-        id: assistantMessageId,
-        content: responseContent,
-      });
+      showAssistantReply(responseContent);
     } catch (error) {
       console.error("Error sending message:", error);
       const errorContent =
-        "Sorry, there was an error processing your request. Please try again.";
-
-      const assistantMessageId = `error-${Date.now()}`;
-      setTypingMessage({
-        id: assistantMessageId,
-        content: errorContent,
-      });
+        error instanceof Error
+          ? error.message
+          : "Sorry, there was an error processing your request. Please try again.";
+      showAssistantReply(errorContent);
     } finally {
       setIsLoading(false);
     }
@@ -263,135 +226,8 @@ export function ChatInterface({
     "What were the main causes of World War I?",
   ];
 
-  // Custom markdown components for better styling
-  const markdownComponents = {
-    h1: ({ children }: any) => (
-      <h1 className="text-xl font-bold mb-3 text-slate-900 dark:text-slate-100">
-        {children}
-      </h1>
-    ),
-    h2: ({ children }: any) => (
-      <h2 className="text-lg font-bold mb-2 text-slate-900 dark:text-slate-100">
-        {children}
-      </h2>
-    ),
-    h3: ({ children }: any) => (
-      <h3 className="text-base font-bold mb-2 text-slate-900 dark:text-slate-100">
-        {children}
-      </h3>
-    ),
-    p: ({ children }: any) => (
-      <p className="mb-3 last:mb-0 leading-relaxed">{children}</p>
-    ),
-    ul: ({ children }: any) => (
-      <ul className="list-disc mb-3 space-y-1 pl-6 [&>li]:leading-relaxed">
-        {children}
-      </ul>
-    ),
-    ol: ({ children }: any) => (
-      <ol className="list-decimal mb-3 space-y-1 pl-6 [&>li]:leading-relaxed">
-        {children}
-      </ol>
-    ),
-    li: ({ children }: any) => (
-      <li className="leading-relaxed [&>p]:mb-1 [&>p]:inline">{children}</li>
-    ),
-    strong: ({ children }: any) => (
-      <strong className="font-semibold text-slate-900 dark:text-slate-100">
-        {children}
-      </strong>
-    ),
-    em: ({ children }: any) => <em className="italic">{children}</em>,
-    code: ({ children, className }: any) => {
-      const isInline = !className;
-      if (isInline) {
-        return (
-          <code className="bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-sm font-mono text-sky-600 dark:text-sky-400">
-            {children}
-          </code>
-        );
-      }
-      return (
-        <pre className="bg-slate-100 dark:bg-slate-800 p-3 rounded-lg overflow-x-auto mb-3">
-          <code className="text-sm font-mono text-slate-800 dark:text-slate-200">
-            {children}
-          </code>
-        </pre>
-      );
-    },
-    blockquote: ({ children }: any) => (
-      <blockquote className="border-l-4 border-sky-300 dark:border-sky-600 pl-4 py-2 mb-3 bg-sky-50 dark:bg-sky-950/20 rounded-r">
-        {children}
-      </blockquote>
-    ),
-    a: ({ children, href }: any) => (
-      <a
-        href={href}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="text-sky-600 dark:text-sky-400 hover:text-sky-700 dark:hover:text-sky-300 underline"
-      >
-        {children}
-      </a>
-    ),
-    table: ({ children }: any) => (
-      <div className="overflow-x-auto mb-3">
-        <table className="min-w-full border-collapse border border-slate-300 dark:border-slate-600">
-          {children}
-        </table>
-      </div>
-    ),
-    thead: ({ children }: any) => (
-      <thead className="bg-slate-50 dark:bg-slate-800">{children}</thead>
-    ),
-    tbody: ({ children }: any) => <tbody>{children}</tbody>,
-    tr: ({ children }: any) => (
-      <tr className="border-b border-slate-200 dark:border-slate-700">
-        {children}
-      </tr>
-    ),
-    th: ({ children }: any) => (
-      <th className="border border-slate-300 dark:border-slate-600 px-3 py-2 text-left font-semibold">
-        {children}
-      </th>
-    ),
-    td: ({ children }: any) => (
-      <td className="border border-slate-300 dark:border-slate-600 px-3 py-2">
-        {children}
-      </td>
-    ),
-  };
-
-  // Process message content to handle math
-  const processMessageContent = (content: string) => {
-    const textContent = String(content || "");
-    const parts = textContent.split(/(\$\$[^$]+\$\$|\$[^$]+\$)/g);
-
-    return parts.map((part, index) => {
-      if (part.startsWith("$$") && part.endsWith("$$")) {
-        return (
-          <MathRenderer key={index} display>
-            {part.slice(2, -2)}
-          </MathRenderer>
-        );
-      } else if (part.startsWith("$") && part.endsWith("$")) {
-        return <MathRenderer key={index}>{part.slice(1, -1)}</MathRenderer>;
-      } else {
-        return (
-          <ReactMarkdown
-            key={index}
-            remarkPlugins={[remarkGfm]}
-            components={markdownComponents}
-          >
-            {part}
-          </ReactMarkdown>
-        );
-      }
-    });
-  };
-
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex h-full flex-col">
       {/* Custom CSS for fractions */}
       <style jsx>{`
         .fraction {
@@ -414,8 +250,8 @@ export function ChatInterface({
       `}</style>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
-        <div className="max-w-4xl mx-auto space-y-6">
+      <ScrollArea className="flex-1 px-3 py-4 sm:px-6" ref={scrollAreaRef}>
+        <div className="mx-auto w-full max-w-5xl space-y-6">
           {chat.messages.length === 0 && !typingMessage ? (
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -426,7 +262,7 @@ export function ChatInterface({
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                className="w-16 h-16 bg-gradient-to-r from-sky-500 to-purple-500 rounded-2xl flex items-center justify-center mx-auto mb-6"
+                className="w-16 h-16 bg-gradient-to-r from-cyan-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6"
               >
                 <Sparkles className="h-8 w-8 text-white" />
               </motion.div>
@@ -460,25 +296,27 @@ export function ChatInterface({
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: 0.6 + index * 0.1 }}
+                    whileHover={{ y: -4, scale: 1.01 }}
+                    whileTap={{ scale: 0.985 }}
                     onClick={() => setInput(prompt)}
-                    className="p-4 text-left bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-sky-300 dark:hover:border-sky-600 hover:shadow-md transition-all duration-200 group"
+                    className="p-4 text-left bg-white/90 dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 rounded-xl hover:border-cyan-300 dark:hover:border-cyan-700 hover:shadow-md transition-all duration-200 group"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="w-8 h-8 bg-gradient-to-r from-sky-100 to-blue-100 dark:from-sky-900 dark:to-blue-900 rounded-lg flex items-center justify-center group-hover:from-sky-200 group-hover:to-blue-200 dark:group-hover:from-sky-800 dark:group-hover:to-blue-800 transition-colors">
+                      <div className="w-8 h-8 bg-gradient-to-r from-cyan-100 to-indigo-100 dark:from-cyan-900/60 dark:to-indigo-900/60 rounded-lg flex items-center justify-center group-hover:from-cyan-200 group-hover:to-indigo-200 dark:group-hover:from-cyan-800/60 dark:group-hover:to-indigo-800/60 transition-colors">
                         {index === 0 && (
-                          <BookOpen className="h-4 w-4 text-sky-600 dark:text-sky-400" />
+                          <BookOpen className="h-4 w-4 text-cyan-700 dark:text-cyan-300" />
                         )}
                         {index === 1 && (
-                          <Lightbulb className="h-4 w-4 text-sky-600 dark:text-sky-400" />
+                          <Lightbulb className="h-4 w-4 text-cyan-700 dark:text-cyan-300" />
                         )}
                         {index === 2 && (
-                          <Bot className="h-4 w-4 text-sky-600 dark:text-sky-400" />
+                          <Bot className="h-4 w-4 text-cyan-700 dark:text-cyan-300" />
                         )}
                         {index === 3 && (
-                          <Sparkles className="h-4 w-4 text-sky-600 dark:text-sky-400" />
+                          <Sparkles className="h-4 w-4 text-cyan-700 dark:text-cyan-300" />
                         )}
                       </div>
-                      <span className="text-sm text-slate-700 dark:text-slate-300 group-hover:text-sky-700 dark:group-hover:text-sky-300 transition-colors">
+                      <span className="text-sm text-slate-700 dark:text-slate-300 group-hover:text-cyan-700 dark:group-hover:text-cyan-300 transition-colors">
                         {prompt}
                       </span>
                     </div>
@@ -491,6 +329,7 @@ export function ChatInterface({
               {chat.messages.map((message, index) => (
                 <motion.div
                   key={message.id}
+                  layout
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
@@ -500,34 +339,51 @@ export function ChatInterface({
                 >
                   {message.role === "assistant" && (
                     <div className="flex-shrink-0">
-                      <div className="w-10 h-10 bg-gradient-to-r from-sky-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg">
+                      <div className="w-10 h-10 bg-gradient-to-r from-cyan-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
                         <Sparkles className="h-5 w-5 text-white" />
                       </div>
                     </div>
                   )}
 
                   <div
-                    className={`group max-w-[75%] ${
+                    className={`group max-w-[82%] sm:max-w-[75%] ${
                       message.role === "user" ? "order-1" : ""
                     }`}
                   >
                     <motion.div
                       initial={{ scale: 0.95 }}
                       animate={{ scale: 1 }}
-                      className={`p-4 rounded-2xl shadow-sm ${
+                      whileHover={{ y: -1 }}
+                      className={`rounded-2xl p-4 shadow-sm ring-1 ring-inset ${
                         message.role === "user"
-                          ? "bg-gradient-to-r from-sky-500 to-purple-500 text-white"
-                          : "bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700"
+                          ? "bg-gradient-to-br from-cyan-600 via-cyan-600 to-indigo-600 text-white ring-white/20"
+                          : "bg-white/90 dark:bg-slate-800/90 border border-slate-200/70 dark:border-slate-700/70 ring-white/70 dark:ring-slate-700/60 backdrop-blur-sm"
                       }`}
                     >
                       {message.role === "user" ? (
-                        <div className="whitespace-pre-wrap break-words leading-relaxed">
-                          {message.content}
+                        <div className="space-y-2">
+                          {message.imageUrl && (
+                            <img
+                              src={message.imageUrl}
+                              alt="Uploaded question"
+                              className="max-h-48 w-full rounded-lg border border-white/20 object-contain"
+                            />
+                          )}
+                          {message.content &&
+                            message.content !== "Question from uploaded image" && (
+                              <div className="whitespace-pre-wrap break-words leading-relaxed">
+                                {message.content}
+                              </div>
+                            )}
+                          {message.imageUrl &&
+                            message.content === "Question from uploaded image" && (
+                              <p className="text-sm text-white/80">
+                                Image question
+                              </p>
+                            )}
                         </div>
                       ) : (
-                        <div className="prose prose-sm max-w-none dark:prose-invert prose-sky [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-                          {processMessageContent(message.content)}
-                        </div>
+                        <MarkdownMessage content={message.content} />
                       )}
                     </motion.div>
 
@@ -560,7 +416,7 @@ export function ChatInterface({
 
                   {message.role === "user" && (
                     <div className="flex-shrink-0">
-                      <div className="w-10 h-10 bg-gradient-to-r from-slate-600 to-slate-700 rounded-xl flex items-center justify-center shadow-lg">
+                    <div className="w-10 h-10 bg-gradient-to-r from-slate-500 to-slate-700 rounded-xl flex items-center justify-center shadow-lg">
                         <User className="h-5 w-5 text-white" />
                       </div>
                     </div>
@@ -571,17 +427,18 @@ export function ChatInterface({
               {/* Typing Message */}
               {typingMessage && (
                 <motion.div
+                  layout
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="flex gap-4 justify-start"
                 >
                   <div className="flex-shrink-0">
-                    <div className="w-10 h-10 bg-gradient-to-r from-sky-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg">
+                    <div className="w-10 h-10 bg-gradient-to-r from-cyan-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
                       <Sparkles className="h-5 w-5 text-white" />
                     </div>
                   </div>
-                  <div className="group max-w-[75%]">
-                    <div className="p-4 rounded-2xl shadow-sm bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+                  <div className="group max-w-[82%] sm:max-w-[75%]">
+                    <div className="rounded-2xl border border-slate-200/70 bg-white/90 p-4 shadow-sm backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-800/90">
                       <TypingMessage
                         content={typingMessage.content}
                         onComplete={handleTypingComplete}
@@ -597,20 +454,21 @@ export function ChatInterface({
           <AnimatePresence>
             {isLoading && !typingMessage && (
               <motion.div
+                layout
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 className="flex gap-4 justify-start"
               >
                 <div className="flex-shrink-0">
-                  <div className="w-10 h-10 bg-gradient-to-r from-sky-500 to-purple-500 rounded-xl flex items-center justify-center shadow-lg">
+                  <div className="w-10 h-10 bg-gradient-to-r from-cyan-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
                     <Sparkles className="h-5 w-5 text-white" />
                   </div>
                 </div>
-                <div className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 shadow-sm">
+                <div className="rounded-2xl border border-slate-200/70 bg-white/90 p-4 shadow-sm backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-800/90">
                   <div className="flex space-x-2">
                     <motion.div
-                      className="w-2 h-2 bg-sky-500 rounded-full"
+                      className="w-2 h-2 bg-cyan-500 rounded-full"
                       animate={{ scale: [1, 1.2, 1] }}
                       transition={{
                         duration: 1,
@@ -619,7 +477,7 @@ export function ChatInterface({
                       }}
                     />
                     <motion.div
-                      className="w-2 h-2 bg-sky-500 rounded-full"
+                      className="w-2 h-2 bg-cyan-500 rounded-full"
                       animate={{ scale: [1, 1.2, 1] }}
                       transition={{
                         duration: 1,
@@ -628,7 +486,7 @@ export function ChatInterface({
                       }}
                     />
                     <motion.div
-                      className="w-2 h-2 bg-sky-500 rounded-full"
+                      className="w-2 h-2 bg-cyan-500 rounded-full"
                       animate={{ scale: [1, 1.2, 1] }}
                       transition={{
                         duration: 1,
@@ -645,36 +503,97 @@ export function ChatInterface({
       </ScrollArea>
 
       {/* Input Form */}
-      <div className="border-t border-slate-200 dark:border-slate-800 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl p-4">
+      <div className="border-t border-slate-200/70 bg-white/75 p-4 backdrop-blur-2xl dark:border-slate-800/80 dark:bg-slate-900/80">
         <form onSubmit={handleSubmit} className="max-w-4xl mx-auto">
-          <div className="relative">
+          {pendingImage && (
+            <div className="mb-3 flex items-start gap-3 rounded-xl border border-slate-200/70 bg-slate-50/80 p-2 dark:border-slate-700/70 dark:bg-slate-800/50">
+              <img
+                src={pendingImage.dataUrl}
+                alt="Preview"
+                className="h-20 w-20 rounded-lg object-cover"
+              />
+              <div className="min-w-0 flex-1 pt-1">
+                <p className="text-sm font-medium text-slate-700 dark:text-slate-200">
+                  Image attached
+                </p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Max 4 MB
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 w-8 shrink-0 p-0"
+                onClick={() => {
+                  setPendingImage(null);
+                  setImageError(null);
+                }}
+                disabled={isLoading}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+          <div className="flex items-end gap-2 rounded-2xl border border-slate-200/70 bg-white/80 p-2 shadow-lg shadow-slate-200/50 dark:border-slate-700/70 dark:bg-slate-900/80 dark:shadow-black/20">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              className="hidden"
+              onChange={handleImageSelect}
+              disabled={isLoading}
+            />
             <Textarea
               ref={textareaRef}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder="Ask me anything..."
-              className="min-h-[56px] max-h-32 resize-none pr-12 border-slate-200 dark:border-slate-700 focus:border-sky-300 dark:focus:border-sky-600 focus:ring-sky-200 dark:focus:ring-sky-800 rounded-xl bg-white dark:bg-slate-800"
+              placeholder={
+                pendingImage
+                  ? "Optional note about the image..."
+                  : "Ask me anything or upload an image..."
+              }
+              className="min-h-[56px] max-h-32 min-w-0 flex-1 resize-none border-0 bg-transparent shadow-none focus-visible:ring-0 focus-visible:ring-offset-0"
               disabled={isLoading}
             />
-            <Button
-              type="submit"
-              disabled={!input.trim() || isLoading}
-              className="absolute right-2 bottom-2 h-10 w-10 p-0 bg-gradient-to-r from-sky-500 to-purple-500 hover:from-sky-600 hover:to-purple-600 disabled:from-slate-300 disabled:to-slate-400 border-0 shadow-lg hover:shadow-xl transition-all duration-200"
-            >
-              <Send className="h-4 w-4" />
-            </Button>
+            <div className="flex shrink-0 items-center gap-1 self-end">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-10 w-10 rounded-xl p-0 text-slate-500 hover:bg-slate-100 hover:text-cyan-600 dark:hover:bg-slate-800 dark:hover:text-cyan-400"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isLoading}
+                title="Upload image"
+              >
+                <ImagePlus className="h-5 w-5" />
+              </Button>
+              <Button
+                type="submit"
+                disabled={(!input.trim() && !pendingImage) || isLoading}
+                className="h-10 w-10 rounded-xl border-0 bg-gradient-to-r from-cyan-600 to-indigo-600 p-0 shadow-lg transition-all duration-200 hover:scale-[1.02] hover:from-cyan-700 hover:to-indigo-700 hover:shadow-xl disabled:from-slate-300 disabled:to-slate-400"
+              >
+                <Send className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
-          <div className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">
-            Press{" "}
-            <kbd className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-xs">
-              Enter
-            </kbd>{" "}
-            to send,{" "}
-            <kbd className="px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-xs">
-              Shift + Enter
-            </kbd>{" "}
-            for new line
+          {imageError && (
+            <p className="mt-2 text-center text-xs text-red-500">{imageError}</p>
+          )}
+          <div className="mt-2 space-y-1 text-center text-xs text-slate-500 dark:text-slate-400">
+            <p>
+              Press{" "}
+              <kbd className="rounded bg-slate-100 px-1.5 py-0.5 text-xs dark:bg-slate-800">
+                Enter
+              </kbd>{" "}
+              to send,{" "}
+              <kbd className="rounded bg-slate-100 px-1.5 py-0.5 text-xs dark:bg-slate-800">
+                Shift + Enter
+              </kbd>{" "}
+              for new line
+            </p>
+            <p>Image upload — Max 4 MB.</p>
           </div>
         </form>
       </div>

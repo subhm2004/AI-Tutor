@@ -34,7 +34,25 @@ def chat():
 
     except Exception as e:
         return jsonify({"error": f"Server error: {str(e)}"}), 500
-    
+
+
+@app.route("/api/chat/image", methods=["POST"])
+def chat_image():
+    try:
+        data = request.get_json() or {}
+        image = data.get("image", "")
+        mime_type = data.get("mimeType", "image/jpeg")
+        user_note = data.get("text", "")
+
+        if not image:
+            return jsonify({"error": "Missing image data"}), 400
+
+        response = tutor_agent.route_image(image, mime_type, user_note)
+        return jsonify(response)
+
+    except Exception as e:
+        return jsonify({"error": f"Server error: {str(e)}"}), 500
+
 # @app.route("/ask", methods=["GET"])
 # def ask_question():
 #     data = request.args

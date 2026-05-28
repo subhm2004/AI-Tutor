@@ -12,6 +12,42 @@ body {
   }
 }
 
+@keyframes testimonial-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes testimonial-marquee-reverse {
+  0% {
+    transform: translateX(-50%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+.animate-testimonial-marquee {
+  animation: testimonial-marquee 40s linear infinite;
+}
+
+.animate-testimonial-marquee-reverse {
+  animation: testimonial-marquee-reverse 45s linear infinite;
+}
+
+.animate-testimonial-marquee:hover,
+.animate-testimonial-marquee-reverse:hover {
+  animation-play-state: paused;
+}
+
+/* KaTeX: avoid harsh red on partial LaTeX from the model */
+.katex-error {
+  color: hsl(var(--foreground)) !important;
+}
+
 @layer base {
   :root {
     --background: 0 0% 100%;

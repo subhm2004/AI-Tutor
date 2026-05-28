@@ -1,299 +1,611 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { ChatSidebar } from "@/components/chat-sidebar";
-import { ChatInterface } from "@/components/chat-interface";
+import Link from "next/link";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Menu, Plus, Sparkles } from "lucide-react";
-import type { Chat, Message } from "@/types/chat";
-import { motion, AnimatePresence } from "framer-motion";
+import { ThemeToggle } from "@/components/theme-toggle";
+import {
+  ArrowRight,
+  BookOpen,
+  Brain,
+  Calculator,
+  FlaskConical,
+  Orbit,
+  Sparkles,
+  GraduationCap,
+  MessageSquareText,
+  Rocket,
+  ShieldCheck,
+  Star,
+  CheckCircle2,
+} from "lucide-react";
+import { motion } from "framer-motion";
 
-export default function ChatApp() {
-  const [chats, setChats] = useState<Chat[]>([]);
-  const [activeChat, setActiveChat] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [sidebarWidth, setSidebarWidth] = useState(280);
-  const [isInitialized, setIsInitialized] = useState(false);
+const features = [
+  {
+    icon: Calculator,
+    title: "Math Problem Solving",
+    description: "Step-by-step help for algebra, calculus, and more.",
+  },
+  {
+    icon: Orbit,
+    title: "Physics Concepts",
+    description: "Understand mechanics, forces, motion, and formulas.",
+  },
+  {
+    icon: FlaskConical,
+    title: "Chemistry Assistance",
+    description: "Get quick guidance for reactions, equations, and basics.",
+  },
+  {
+    icon: BookOpen,
+    title: "History Explanations",
+    description: "Learn timelines, events, and causes with clarity.",
+  },
+];
 
-  // Load chats from localStorage on mount
+const highlights = [
+  "Multi-subject tutoring in one chat",
+  "Fast responses powered by Groq",
+  "Clean UI with dark/light theme",
+  "Conversation history with smart sidebar",
+];
+
+const stats = [
+  { label: "Subjects", value: "4+" },
+  { label: "Response speed", value: "< 2s*" },
+  { label: "Learning mode", value: "24/7" },
+];
+
+const socialProof = [
+  "Trusted by self-learners",
+  "Built for exam prep",
+  "Great for daily revision",
+  "Simple, distraction-free UI",
+];
+
+const testimonials = [
+  {
+    name: "Aarav K.",
+    role: "Class 12 · Science",
+    subject: "Physics",
+    quote:
+      "Derivatives and motion problems finally made sense. Explanations are short, clear, and exam-friendly.",
+    rating: 5,
+  },
+  {
+    name: "Sneha M.",
+    role: "Undergrad · Chemistry",
+    subject: "Chemistry",
+    quote:
+      "I use it for quick revision before tests. The step-by-step breakdown saves me hours every week.",
+    rating: 5,
+  },
+  {
+    name: "Rohan P.",
+    role: "Self-learner",
+    subject: "History",
+    quote:
+      "Love that I can ask follow-up questions in one thread. Feels like a patient tutor, not a textbook.",
+    rating: 5,
+  },
+];
+
+type Testimonial = (typeof testimonials)[number];
+
+function TestimonialCard({ item }: { item: Testimonial }) {
+  return (
+    <article className="w-[min(100vw-3rem,380px)] shrink-0 rounded-2xl border border-slate-200/80 bg-white/90 p-5 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/80">
+      <div className="flex items-center gap-1">
+        {Array.from({ length: item.rating }).map((_, i) => (
+          <Star key={i} className="h-4 w-4 fill-amber-400 text-amber-400" />
+        ))}
+      </div>
+      <p className="mt-4 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+        &ldquo;{item.quote}&rdquo;
+      </p>
+      <div className="mt-5 flex items-center justify-between border-t border-slate-200/80 pt-4 dark:border-slate-800">
+        <div>
+          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+            {item.name}
+          </p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">{item.role}</p>
+        </div>
+        <span className="rounded-full bg-cyan-50 px-2.5 py-1 text-xs font-medium text-cyan-700 dark:bg-cyan-950/40 dark:text-cyan-300">
+          {item.subject}
+        </span>
+      </div>
+    </article>
+  );
+}
+
+const footerLinks = {
+  product: [
+    { label: "Features", href: "#features" },
+    { label: "How it works", href: "#preview" },
+    { label: "Testimonials", href: "#testimonials" },
+    { label: "Open Chat", href: "/chat" },
+  ],
+  subjects: [
+    { label: "Mathematics", href: "/chat" },
+    { label: "Physics", href: "/chat" },
+    { label: "Chemistry", href: "/chat" },
+    { label: "History", href: "/chat" },
+  ],
+};
+
+export default function LandingPage() {
+  const [isScrolled, setIsScrolled] = useState(false);
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+
+  const heroContainer = {
+    hidden: { opacity: 0 },
+    show: { opacity: 1, transition: { staggerChildren: 0.08 } },
+  };
+
+  const heroItem = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0, transition: { duration: 0.45 } },
+  };
+
   useEffect(() => {
-    const savedChats = localStorage.getItem("ai-tutor-chats");
-    const savedSidebarWidth = localStorage.getItem("ai-tutor-sidebar-width");
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 24);
+    };
 
-    if (savedSidebarWidth) {
-      setSidebarWidth(Number.parseInt(savedSidebarWidth));
-    }
+    const handleMouseMove = (e: MouseEvent) => {
+      const cx = window.innerWidth / 2;
+      const cy = window.innerHeight / 2;
+      setMousePosition({
+        x: (e.clientX - cx) / cx,
+        y: (e.clientY - cy) / cy,
+      });
+    };
 
-    if (savedChats) {
-      const parsedChats = JSON.parse(savedChats).map((chat: any) => ({
-        ...chat,
-        createdAt: new Date(chat.createdAt),
-        updatedAt: new Date(chat.updatedAt),
-        messages: chat.messages.map((message: any) => ({
-          ...message,
-          timestamp: new Date(message.timestamp),
-        })),
-      }));
+    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("mousemove", handleMouseMove);
 
-      const nonEmptyChats = parsedChats.filter(
-        (chat: Chat) => chat.messages.length > 0
-      );
-
-      if (nonEmptyChats.length > 0) {
-        setChats(nonEmptyChats);
-        setActiveChat(nonEmptyChats[0].id);
-      } else {
-        const newChat: Chat = {
-          id: Date.now().toString(),
-          title: "New conversation",
-          messages: [],
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-        setChats([newChat]);
-        setActiveChat(newChat.id);
-      }
-    } else {
-      const newChat: Chat = {
-        id: Date.now().toString(),
-        title: "New conversation",
-        messages: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      };
-      setChats([newChat]);
-      setActiveChat(newChat.id);
-    }
-    setIsInitialized(true);
+    return () => {
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("mousemove", handleMouseMove);
+    };
   }, []);
 
-  // Save chats to localStorage whenever chats change
-  useEffect(() => {
-    if (isInitialized && chats.length > 0) {
-      localStorage.setItem("ai-tutor-chats", JSON.stringify(chats));
-    }
-  }, [chats, isInitialized]);
-
-  // Save sidebar width to localStorage
-  useEffect(() => {
-    localStorage.setItem("ai-tutor-sidebar-width", sidebarWidth.toString());
-  }, [sidebarWidth]);
-
-  const createNewChat = () => {
-    const newChat: Chat = {
-      id: Date.now().toString(),
-      title: "New conversation",
-      messages: [],
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-    setChats((prev) => [newChat, ...prev]);
-    setActiveChat(newChat.id);
-  };
-
-  const updateChat = (chatId: string, updates: Partial<Chat>) => {
-    setChats((prev) => {
-      const updated = prev.map((chat) =>
-        chat.id === chatId
-          ? { ...chat, ...updates, updatedAt: new Date() }
-          : chat
-      );
-      return updated;
-    });
-  };
-
-  const deleteChat = (chatId: string) => {
-    setChats((prev) => {
-      const filtered = prev.filter((chat) => chat.id !== chatId);
-      if (activeChat === chatId && filtered.length > 0) {
-        setActiveChat(filtered[0].id);
-      } else if (filtered.length === 0) {
-        const newChat: Chat = {
-          id: Date.now().toString(),
-          title: "New conversation",
-          messages: [],
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        };
-        setActiveChat(newChat.id);
-        return [newChat];
-      }
-      return filtered;
-    });
-  };
-
-  const renameChat = (chatId: string, newTitle: string) => {
-    updateChat(chatId, { title: newTitle });
-  };
-
-  const addMessage = (chatId: string, message: Message) => {
-    setChats((prev) => {
-      const updated = prev.map((chat) => {
-        if (chat.id === chatId) {
-          const newMessages = [...chat.messages, message];
-          return {
-            ...chat,
-            messages: newMessages,
-            updatedAt: new Date(),
-          };
-        }
-        return chat;
-      });
-      return updated;
-    });
-  };
-
-  const updateChatTitle = (chatId: string, firstMessage: string) => {
-    const title =
-      firstMessage.length > 30
-        ? firstMessage.substring(0, 30) + "..."
-        : firstMessage;
-    updateChat(chatId, { title });
-  };
-
-  const currentChat = chats.find((chat) => chat.id === activeChat);
-
-  if (!isInitialized) {
-    return (
-      <div className="flex h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900 items-center justify-center">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-gradient-to-r from-sky-500 to-purple-500 rounded-lg flex items-center justify-center animate-pulse">
-            <Sparkles className="h-4 w-4 text-white" />
-          </div>
-          <span className="text-slate-600 dark:text-slate-400">
-            Loading AI Tutor...
-          </span>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="flex h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
-      {/* Sidebar */}
-      <AnimatePresence mode="wait">
-        {sidebarOpen && (
-          <motion.div
-            initial={{ width: 0, opacity: 0 }}
-            animate={{ width: sidebarWidth, opacity: 1 }}
-            exit={{ width: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: "easeInOut" }}
-            className="overflow-hidden border-r border-slate-200 dark:border-slate-800"
-          >
-            <ChatSidebar
-              chats={chats}
-              activeChat={activeChat}
-              onSelectChat={setActiveChat}
-              onDeleteChat={deleteChat}
-              onRenameChat={renameChat}
-              onNewChat={createNewChat}
-              width={sidebarWidth}
-              onWidthChange={setSidebarWidth}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+    <main className="relative min-h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
+      <motion.div
+        className="pointer-events-none absolute -top-36 -left-20 h-80 w-80 rounded-full bg-cyan-400/15 blur-3xl dark:bg-cyan-600/15"
+        animate={{ x: [0, 24, 0], y: [0, -14, 0], scale: [1, 1.08, 1] }}
+        transition={{ duration: 14, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <motion.div
+        className="pointer-events-none absolute -bottom-36 -right-20 h-80 w-80 rounded-full bg-indigo-400/15 blur-3xl dark:bg-indigo-700/15"
+        animate={{ x: [0, -22, 0], y: [0, 14, 0], scale: [1, 1.06, 1] }}
+        transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
+      />
+      <div
+        className="pointer-events-none absolute left-1/3 top-16 h-40 w-40 rounded-full bg-cyan-300/10 blur-2xl dark:bg-cyan-500/10"
+        style={{
+          transform: `translate3d(${mousePosition.x * 14}px, ${mousePosition.y * 10}px, 0)`,
+        }}
+      />
+      <div
+        className="pointer-events-none absolute right-1/4 top-28 h-44 w-44 rounded-full bg-indigo-300/10 blur-2xl dark:bg-indigo-600/10"
+        style={{
+          transform: `translate3d(${mousePosition.x * -16}px, ${mousePosition.y * -12}px, 0)`,
+        }}
+      />
 
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
-        <motion.div
-          initial={{ y: -20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-b border-slate-200 dark:border-slate-800 p-4 flex items-center justify-between"
+      <header className="sticky top-0 z-50 mx-auto w-full max-w-6xl px-6 pt-4">
+        <nav
+          className={`flex items-center justify-between rounded-2xl border px-4 py-3 backdrop-blur-md transition-all duration-300 ${
+            isScrolled
+              ? "border-slate-200/90 bg-white/88 shadow-lg dark:border-slate-800 dark:bg-slate-900/85"
+              : "border-slate-200/70 bg-white/75 shadow-sm dark:border-slate-800 dark:bg-slate-900/70"
+          }`}
         >
-          <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-sky-500 to-purple-500 rounded-lg flex items-center justify-center">
-                <Sparkles className="h-4 w-4 text-white" />
-              </div>
-              <div>
-                <h1 className="text-lg font-semibold bg-gradient-to-r from-slate-900 to-slate-600 dark:from-slate-100 dark:to-slate-400 bg-clip-text text-transparent">
-                  {currentChat?.title || "AI Tutor"}
-                </h1>
-                <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Your intelligent learning companion
-                </p>
-              </div>
+          <div className="flex items-center gap-2">
+            <div className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r from-cyan-600 to-indigo-600">
+              <Sparkles className="h-4 w-4 text-white" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                AI Tutor
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Learn smarter, every day
+              </p>
             </div>
           </div>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button asChild className="h-9 rounded-lg px-4">
+              <Link href="/chat">Open App</Link>
+            </Button>
+          </div>
+        </nav>
+      </header>
+
+      <motion.section
+        variants={heroContainer}
+        initial="hidden"
+        animate="show"
+        className="mx-auto flex w-full max-w-6xl flex-col items-center px-6 pb-16 pt-10 sm:pt-14"
+      >
+        <motion.div
+          variants={heroItem}
+          className="inline-flex items-center gap-2 rounded-full border border-cyan-200 bg-white/70 px-4 py-1.5 text-sm text-cyan-700 shadow-sm backdrop-blur dark:border-cyan-900 dark:bg-slate-900/60 dark:text-cyan-300"
+        >
+          <Sparkles className="h-4 w-4" />
+          AI Tutor for smart learning
+        </motion.div>
+
+        <motion.h1
+          variants={heroItem}
+          className="mt-6 max-w-4xl text-center text-4xl font-bold leading-tight text-slate-900 sm:text-5xl md:text-6xl dark:text-slate-100"
+        >
+          Learn faster with your
+          <span className="bg-gradient-to-r from-cyan-600 to-indigo-600 bg-clip-text text-transparent">
+            {" "}
+            AI Study Partner
+          </span>
+        </motion.h1>
+
+        <motion.p
+          variants={heroItem}
+          className="mt-5 max-w-2xl text-center text-base text-slate-600 sm:text-lg dark:text-slate-300"
+        >
+          Ask doubts, practice concepts, and get personalized explanations in
+          Math, Physics, Chemistry, and History - all in one clean chat
+          experience.
+        </motion.p>
+
+        <motion.div
+          variants={heroItem}
+          className="mt-8 flex flex-col items-center gap-3 sm:flex-row"
+        >
           <Button
-            onClick={createNewChat}
-            className="bg-gradient-to-r from-sky-500 to-purple-500 hover:from-sky-600 hover:to-purple-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200"
+            asChild
+            className="h-11 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 px-6 text-white shadow-lg transition-all duration-200 hover:scale-[1.02] hover:from-cyan-700 hover:to-indigo-700"
           >
-            <Plus className="h-4 w-4 mr-2" />
-            New Chat
+            <Link href="/chat">
+              Start Learning
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className="h-11 rounded-xl px-6">
+            <Link href="/chat">Try Demo Chat</Link>
           </Button>
         </motion.div>
 
-        {/* Chat Interface */}
-        <div className="flex-1 min-h-0">
-          {currentChat ? (
-            <ChatInterface
-              key={currentChat.id}
-              chat={currentChat}
-              onAddMessage={addMessage}
-              onUpdateTitle={updateChatTitle}
-            />
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex items-center justify-center h-full"
-            >
-              <div className="text-center max-w-md mx-auto p-8">
-                <motion.div
-                  initial={{ scale: 0 }}
-                  animate={{ scale: 1 }}
-                  transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                  className="w-20 h-20 bg-gradient-to-r from-sky-500 to-purple-500 rounded-2xl flex items-center justify-center mx-auto mb-6"
-                >
-                  <Sparkles className="h-10 w-10 text-white" />
-                </motion.div>
-                <motion.h2
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.3 }}
-                  className="text-3xl font-bold bg-gradient-to-r from-slate-900 to-slate-600 dark:from-slate-100 dark:to-slate-400 bg-clip-text text-transparent mb-4"
-                >
-                  Welcome to AI Tutor
-                </motion.h2>
-                <motion.p
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.4 }}
-                  className="text-slate-600 dark:text-slate-400 mb-8 leading-relaxed"
-                >
-                  Your intelligent learning companion is ready to help you
-                  understand complex topics, solve problems, and accelerate your
-                  learning journey.
-                </motion.p>
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: 0.5 }}
-                >
-                  <Button
-                    onClick={createNewChat}
-                    className="bg-gradient-to-r from-sky-500 to-purple-500 hover:from-sky-600 hover:to-purple-600 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200 px-8 py-3 text-lg"
-                  >
-                    <Plus className="h-5 w-5 mr-2" />
-                    Start Learning
-                  </Button>
-                </motion.div>
+        <motion.div
+          id="preview"
+          variants={heroItem}
+          className="group mt-10 w-full max-w-5xl rounded-3xl border border-slate-200/80 bg-white/80 p-4 shadow-xl backdrop-blur-xl dark:border-slate-800 dark:bg-slate-900/70"
+          onMouseMove={(e) => {
+            const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
+            const px = (e.clientX - rect.left) / rect.width;
+            const py = (e.clientY - rect.top) / rect.height;
+            setTilt({
+              x: (py - 0.5) * -8,
+              y: (px - 0.5) * 10,
+            });
+          }}
+          onMouseLeave={() => setTilt({ x: 0, y: 0 })}
+          style={{
+            transform: `perspective(1200px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`,
+            transition: "transform 120ms ease-out",
+          }}
+        >
+          <div className="grid gap-4 md:grid-cols-[1.2fr_1fr]">
+            <div className="rounded-2xl border border-slate-200/80 bg-slate-50/90 p-5 dark:border-slate-800 dark:bg-slate-950/70">
+              <p className="mb-3 text-xs font-medium uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Live AI Session Preview
+              </p>
+              <div className="space-y-3">
+                <div className="ml-auto max-w-[85%] rounded-2xl bg-gradient-to-r from-cyan-600 to-indigo-600 px-4 py-3 text-sm text-white shadow">
+                  Explain Newton's second law with a real-life example.
+                </div>
+                <div className="max-w-[92%] rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200">
+                  Newton's second law says force = mass x acceleration. Example:
+                  pushing an empty vs loaded shopping cart - heavier cart needs
+                  more force for same acceleration.
+                </div>
               </div>
-            </motion.div>
-          )}
+            </div>
+            <div className="rounded-2xl border border-cyan-200/70 bg-gradient-to-br from-cyan-50 to-indigo-50 p-5 dark:border-cyan-900 dark:from-cyan-950/30 dark:to-indigo-950/20">
+              <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                Why students love AI Tutor
+              </p>
+              <ul className="mt-3 space-y-2 text-sm text-slate-600 dark:text-slate-300">
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  Clear explanations, no jargon
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  Multi-subject support in one place
+                </li>
+                <li className="flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                  Works great for quick revision
+                </li>
+              </ul>
+              <Button asChild className="mt-5 w-full rounded-xl">
+                <Link href="/chat">Start This Experience</Link>
+              </Button>
+            </div>
+          </div>
+        </motion.div>
+
+        <motion.div
+          variants={heroItem}
+          className="mt-8 grid w-full max-w-3xl grid-cols-1 gap-2 sm:grid-cols-2"
+        >
+          {highlights.map((item) => (
+            <div
+              key={item}
+              className="inline-flex items-center gap-2 rounded-lg border border-slate-200/80 bg-white/70 px-3 py-2 text-sm text-slate-700 shadow-sm dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300"
+            >
+              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+              {item}
+            </div>
+          ))}
+        </motion.div>
+
+        <motion.div
+          id="features"
+          variants={heroItem}
+          className="mt-14 grid w-full gap-4 sm:grid-cols-2 lg:grid-cols-4"
+        >
+          {features.map((feature) => (
+            <div
+              key={feature.title}
+              className="relative rounded-2xl p-[1px] transition-all duration-300 hover:-translate-y-1"
+            >
+              <div className="absolute inset-0 rounded-2xl bg-[conic-gradient(from_180deg_at_50%_50%,rgba(6,182,212,0.1),rgba(99,102,241,0.35),rgba(6,182,212,0.1))] opacity-60 animate-[spin_8s_linear_infinite]" />
+              <div className="relative rounded-2xl border border-slate-200/70 bg-white/90 p-5 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/75">
+                <div className="mb-4 inline-flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 text-white">
+                  <feature.icon className="h-5 w-5" />
+                </div>
+                <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                  {feature.title}
+                </h3>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+                  {feature.description}
+                </p>
+              </div>
+            </div>
+          ))}
+        </motion.div>
+
+        <motion.div
+          variants={heroItem}
+          className="mt-6 grid w-full gap-4 sm:grid-cols-3"
+        >
+          {stats.map((stat) => (
+            <div
+              key={stat.label}
+              className="rounded-2xl border border-slate-200/70 bg-white/70 p-5 text-center shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/60"
+            >
+              <p className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+                {stat.value}
+              </p>
+              <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                {stat.label}
+              </p>
+            </div>
+          ))}
+        </motion.div>
+
+        <motion.div
+          variants={heroItem}
+          className="mt-12 grid w-full gap-4 md:grid-cols-3"
+        >
+          <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-5 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/60">
+            <MessageSquareText className="h-5 w-5 text-cyan-500" />
+            <h3 className="mt-3 font-semibold text-slate-900 dark:text-slate-100">
+              Natural Conversations
+            </h3>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+              Ask in simple language and get easy-to-understand responses.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-5 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/60">
+            <Rocket className="h-5 w-5 text-indigo-500" />
+            <h3 className="mt-3 font-semibold text-slate-900 dark:text-slate-100">
+              Fast + Focused
+            </h3>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+              Optimized for quick doubt solving and revision sessions.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-slate-200/80 bg-white/80 p-5 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-900/60">
+            <ShieldCheck className="h-5 w-5 text-emerald-500" />
+            <h3 className="mt-3 font-semibold text-slate-900 dark:text-slate-100">
+              Reliable Study Companion
+            </h3>
+            <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
+              Built for practice, explanation clarity, and consistent learning.
+            </p>
+          </div>
+        </motion.div>
+
+        <motion.section
+          id="testimonials"
+          variants={heroItem}
+          className="mt-16 w-full"
+        >
+          <div className="text-center">
+            <p className="text-sm font-medium uppercase tracking-wider text-cyan-600 dark:text-cyan-400">
+              Testimonials
+            </p>
+            <h2 className="mt-2 text-2xl font-bold text-slate-900 sm:text-3xl dark:text-slate-100">
+              Students actually enjoy learning here
+            </h2>
+            <p className="mx-auto mt-3 max-w-2xl text-sm text-slate-600 sm:text-base dark:text-slate-400">
+              Real feedback from learners using AI Tutor for doubts, revision,
+              and exam prep across subjects.
+            </p>
+          </div>
+
+          <div className="relative mt-10 w-full overflow-hidden">
+            <div className="pointer-events-none absolute left-0 top-0 z-10 h-full w-12 bg-gradient-to-r from-slate-50 via-slate-50/80 to-transparent dark:from-slate-950 dark:via-slate-950/80 sm:w-20" />
+            <div className="pointer-events-none absolute right-0 top-0 z-10 h-full w-12 bg-gradient-to-l from-slate-50 via-slate-50/80 to-transparent dark:from-slate-950 dark:via-slate-950/80 sm:w-20" />
+
+            <div className="flex w-max animate-testimonial-marquee gap-4 py-1">
+              {[...testimonials, ...testimonials].map((item, index) => (
+                <TestimonialCard key={`row1-${item.name}-${index}`} item={item} />
+              ))}
+            </div>
+
+            <div className="mt-4 flex w-max animate-testimonial-marquee-reverse gap-4 py-1">
+              {[
+                ...[...testimonials].reverse(),
+                ...[...testimonials].reverse(),
+              ].map((item, index) => (
+                <TestimonialCard key={`row2-${item.name}-${index}`} item={item} />
+              ))}
+            </div>
+          </div>
+        </motion.section>
+
+        <motion.div
+          variants={heroItem}
+          className="mt-14 w-full rounded-3xl border border-cyan-200/80 bg-gradient-to-r from-cyan-600 to-indigo-600 p-8 text-white shadow-xl dark:border-cyan-900"
+        >
+          <div className="flex flex-col items-start justify-between gap-6 sm:flex-row sm:items-center">
+            <div>
+              <p className="inline-flex items-center gap-2 text-sm font-medium text-white/90">
+                <GraduationCap className="h-4 w-4" />
+                Ready for focused learning?
+              </p>
+              <h2 className="mt-2 text-2xl font-bold">
+                Start your first AI-powered study session.
+              </h2>
+            </div>
+            <Button
+              asChild
+              className="h-11 rounded-xl bg-white px-6 text-cyan-700 hover:bg-slate-100"
+            >
+              <Link href="/chat">
+                Open AI Tutor
+                <Brain className="ml-2 h-4 w-4" />
+              </Link>
+            </Button>
+          </div>
+        </motion.div>
+
+        <motion.div
+          variants={heroItem}
+          className="mt-8 inline-flex items-center gap-2 rounded-full border border-slate-200/80 bg-white/80 px-4 py-2 text-xs text-slate-600 shadow-sm dark:border-slate-800 dark:bg-slate-900/70 dark:text-slate-300"
+        >
+          <Star className="h-3.5 w-3.5 text-amber-500" />
+          Built for students who want speed + clarity
+        </motion.div>
+
+        <motion.div
+          variants={heroItem}
+          className="mt-6 grid w-full max-w-4xl grid-cols-2 gap-2 sm:grid-cols-4"
+        >
+          {socialProof.map((item) => (
+            <div
+              key={item}
+              className="rounded-lg border border-slate-200/80 bg-white/70 px-3 py-2 text-center text-xs font-medium text-slate-600 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-300"
+            >
+              {item}
+            </div>
+          ))}
+        </motion.div>
+
+      </motion.section>
+
+      <footer className="relative mt-4 border-t border-slate-200/80 bg-slate-900 text-slate-300 dark:border-slate-800">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(6,182,212,0.12),transparent_55%)]" />
+        <div className="relative mx-auto max-w-6xl px-6 py-14">
+          <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-4">
+            <div className="lg:col-span-1">
+              <div className="flex items-center gap-2">
+                <div className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-r from-cyan-600 to-indigo-600">
+                  <Sparkles className="h-4 w-4 text-white" />
+                </div>
+                <span className="text-lg font-semibold text-white">AI Tutor</span>
+              </div>
+              <p className="mt-4 text-sm leading-relaxed text-slate-400">
+                Your intelligent study companion for Math, Physics, Chemistry,
+                and History. Learn faster with clear, conversational help.
+              </p>
+              <Button
+                asChild
+                className="mt-5 h-10 rounded-lg bg-gradient-to-r from-cyan-600 to-indigo-600 text-white hover:from-cyan-700 hover:to-indigo-700"
+              >
+                <Link href="/chat">
+                  Start free
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-white">
+                Product
+              </h3>
+              <ul className="mt-4 space-y-2.5">
+                {footerLinks.product.map((link) => (
+                  <li key={link.label}>
+                    <Link
+                      href={link.href}
+                      className="text-sm text-slate-400 transition-colors hover:text-cyan-300"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-white">
+                Subjects
+              </h3>
+              <ul className="mt-4 space-y-2.5">
+                {footerLinks.subjects.map((link) => (
+                  <li key={link.label}>
+                    <Link
+                      href={link.href}
+                      className="text-sm text-slate-400 transition-colors hover:text-cyan-300"
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            <div>
+              <h3 className="text-sm font-semibold uppercase tracking-wider text-white">
+                Built for
+              </h3>
+              <ul className="mt-4 space-y-2.5 text-sm text-slate-400">
+                <li>Exam preparation</li>
+                <li>Daily homework help</li>
+                <li>Concept revision</li>
+                <li>Self-paced learning</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-slate-800 pt-8 sm:flex-row">
+            <p className="text-xs text-slate-500">
+              © {new Date().getFullYear()} AI Tutor. All rights reserved.
+            </p>
+            <p className="text-xs text-slate-500">
+              Made for learners who want clarity, speed, and focus.
+            </p>
+          </div>
         </div>
-      </div>
-    </div>
+      </footer>
+    </main>
   );
 }

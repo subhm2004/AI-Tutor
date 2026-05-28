@@ -205,14 +205,14 @@ export function ChatSidebar({
   return (
     <div
       ref={sidebarRef}
-      className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl h-full flex border-r border-slate-200 dark:border-slate-800 relative"
+      className="relative flex h-full border-r border-slate-200/70 bg-white/80 backdrop-blur-2xl dark:border-slate-800/80 dark:bg-slate-900/80"
       style={{ width }}
     >
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <div className="p-3 border-b border-slate-200 dark:border-slate-800">
+        <div className="border-b border-slate-200/70 p-3 dark:border-slate-800/80">
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-6 h-6 bg-gradient-to-r from-sky-500 to-purple-500 rounded-md flex items-center justify-center">
+            <div className="w-6 h-6 bg-gradient-to-r from-cyan-600 to-indigo-600 rounded-md flex items-center justify-center">
               <Sparkles className="h-3 w-3 text-white" />
             </div>
             <div className="flex-1 min-w-0">
@@ -227,7 +227,7 @@ export function ChatSidebar({
           </div>
           <Button
             onClick={onNewChat}
-            className="w-full h-8 bg-gradient-to-r from-sky-500 to-purple-500 hover:from-sky-600 hover:to-purple-600 text-white border-0 shadow-md hover:shadow-lg transition-all duration-200 text-sm"
+            className="h-8 w-full border-0 bg-gradient-to-r from-cyan-600 to-indigo-600 text-sm text-white shadow-md transition-all duration-200 hover:from-cyan-700 hover:to-indigo-700 hover:shadow-lg"
           >
             <Plus className="h-3 w-3 mr-1" />
             New Chat
@@ -253,10 +253,10 @@ export function ChatSidebar({
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -20 }}
                       transition={{ delay: index * 0.02 }}
-                      className={`group relative mb-1 rounded-lg cursor-pointer transition-all duration-200 ${
+                      className={`group relative mb-1 cursor-pointer rounded-lg transition-all duration-200 ${
                         activeChat === chat.id
-                          ? "bg-gradient-to-r from-sky-50 to-blue-50 dark:from-sky-950/50 dark:to-blue-950/50 border border-sky-200 dark:border-sky-800"
-                          : "hover:bg-slate-50 dark:hover:bg-slate-800/50"
+                          ? "border border-cyan-200 bg-gradient-to-r from-cyan-50 to-slate-50 shadow-sm shadow-cyan-100/70 dark:border-cyan-900 dark:from-cyan-950/30 dark:to-slate-900 dark:shadow-none"
+                          : "hover:bg-slate-50/90 dark:hover:bg-slate-800/50"
                       }`}
                       onMouseEnter={() => handleChatMouseEnter(chat.id)}
                       onMouseLeave={() => handleChatMouseLeave(chat.id)}
@@ -266,7 +266,7 @@ export function ChatSidebar({
                         <div
                           className={`w-1.5 h-1.5 rounded-full flex-shrink-0 transition-colors ${
                             activeChat === chat.id
-                              ? "bg-gradient-to-r from-sky-500 to-blue-500"
+                              ? "bg-gradient-to-r from-cyan-500 to-indigo-500"
                               : "bg-slate-300 dark:bg-slate-600"
                           }`}
                         />
@@ -311,7 +311,7 @@ export function ChatSidebar({
                               <div
                                 className={`text-xs font-medium truncate transition-colors ${
                                   activeChat === chat.id
-                                    ? "text-sky-700 dark:text-sky-300"
+                                    ? "text-cyan-700 dark:text-cyan-300"
                                     : "text-slate-700 dark:text-slate-300"
                                 }`}
                               >
@@ -392,7 +392,7 @@ export function ChatSidebar({
         </ScrollArea>
 
         {/* Footer */}
-        <div className="p-3 border-t border-slate-200 dark:border-slate-800">
+        <div className="border-t border-slate-200/70 p-3 dark:border-slate-800/80">
           <div className="text-xs text-slate-500 dark:text-slate-400 text-center">
             AI Tutor v1.0
           </div>
@@ -401,10 +401,10 @@ export function ChatSidebar({
 
       {/* Resize Handle */}
       <div
-        className="w-1 bg-transparent hover:bg-sky-300 dark:hover:bg-sky-600 cursor-col-resize transition-colors flex items-center justify-center group"
+        className="w-1 bg-transparent hover:bg-cyan-300 dark:hover:bg-cyan-700 cursor-col-resize transition-colors flex items-center justify-center group"
         onMouseDown={() => setIsResizing(true)}
       >
-        <div className="w-0.5 h-8 bg-slate-300 dark:bg-slate-600 group-hover:bg-sky-400 dark:group-hover:bg-sky-500 transition-colors rounded-full opacity-0 group-hover:opacity-100" />
+        <div className="w-0.5 h-8 bg-slate-300 dark:bg-slate-600 group-hover:bg-cyan-500 dark:group-hover:bg-cyan-500 transition-colors rounded-full opacity-0 group-hover:opacity-100" />
       </div>
     </div>
   );

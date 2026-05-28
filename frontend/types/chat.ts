@@ -3,6 +3,7 @@ export interface Message {
   role: "user" | "assistant"
   content: string
   timestamp: Date
+  imageUrl?: string
 }
 
 export interface Chat {
@@ -17,4 +18,13 @@ export interface ChatResponse {
   message?: string
   response?: string
   error?: string
+  agent?: string
+  reason?: string
+  image_summary?: string
+}
+
+export interface ImageChatPayload {
+  image: string
+  mimeType: string
+  text?: string
 }

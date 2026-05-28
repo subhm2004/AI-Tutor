@@ -3,7 +3,9 @@ from .physics_agent import PhysicsAgent
 from .chemistry_agent import ChemistryAgent
 from .history_agent import HistoryAgent
 from .base_agent import BaseAgent
+from services.image_vision import ImageVisionService
 import json
+import re
 
 # MAX_TOKENS_APPROX = 5000 * 4  # ~4 chars per token (safe estimate)
 MAX_MESSAGES = 10
@@ -29,6 +31,72 @@ class TutorAgent(BaseAgent):
         self.physics_agent = PhysicsAgent()
         self.chemistry_agent = ChemistryAgent()
         self.history_agent = HistoryAgent()
+        self.image_vision = ImageVisionService()
+
+    def route_image(
+        self,
+        image_base64: str,
+        mime_type: str = "image/jpeg",
+        user_note: str = "",
+    ) -> dict:
+        analysis = self.image_vision.analyze(image_base64, mime_type, user_note)
+
+        if not analysis.get("in_scope"):
+            summary = analysis.get("image_summary") or "your uploaded image"
+            topic = analysis.get("detected_topic") or "another subject"
+            reason = analysis.get("reason", "")
+            response = (
+                f"I read your image. **What I see:** {summary}\n\n"
+                f"This tutor only answers questions in **Mathematics**, **Physics**, "
+                f"**Chemistry**, and **History**.\n\n"
+                f"Your image looks related to **{topic}**, which is outside these four subjects. "
+                f"Please upload a question from Math, Physics, Chemistry, or History."
+            )
+            if reason:
+                response += f"\n\n_{reason}_"
+            return {
+                "agent": "OutOfScope",
+                "response": response,
+                "reason": reason or "Question not in supported subjects.",
+                "image_summary": summary,
+            }
+
+        subject = analysis.get("subject", "Unknown")
+        question = analysis.get("extracted_question") or user_note.strip()
+        if not question:
+            question = "Solve the problem shown in the uploaded image."
+
+        context = (
+            f"[From uploaded image] {question}\n\n"
+            f"Image context: {analysis.get('image_summary', '')}"
+        )
+        if user_note.strip():
+            context += f"\nStudent note: {user_note.strip()}"
+
+        return self._answer_with_agent(subject, context, analysis.get("reason", ""))
+
+    def _answer_with_agent(self, subject: str, query: str, reason: str) -> dict:
+        if subject == "MathAgent":
+            result = self.math_agent.respond(query)
+        elif subject == "PhysicsAgent":
+            result = self.physics_agent.respond(query)
+        elif subject == "ChemistryAgent":
+            result = self.chemistry_agent.respond(query)
+        elif subject == "HistoryAgent":
+            result = self.history_agent.respond(query)
+        else:
+            result = BaseAgent(
+                "BaseAgent",
+                "This question is out of scope. Politely explain we only support "
+                "Math, Physics, Chemistry, and History.",
+            ).respond(query)
+            subject = "Unknown"
+
+        return {
+            "agent": subject,
+            "response": result,
+            "reason": reason,
+        }
 
     def route(self, messages: list[dict]) -> dict:
         # Trim message history to fit under token and message limit
@@ -66,29 +134,12 @@ class TutorAgent(BaseAgent):
 
         try:
             raw_response = super().respond(classification_prompt)
-            raw_response = raw_response.strip("```json ").lstrip().rstrip().rstrip("```")
-            data = json.loads(raw_response)
+            data = self._parse_classification_response(raw_response, user_query)
 
             subject = data.get("subject", "Unknown")
             reason = data.get("reason", "No reason provided.")
 
-            if subject == "MathAgent":
-                result = self.math_agent.respond(reason + user_query)
-            elif subject == "PhysicsAgent":
-                result = self.physics_agent.respond(reason + user_query)
-            elif subject == "ChemistryAgent":
-                result = self.chemistry_agent.respond(reason + user_query)
-            elif subject == "HistoryAgent":
-                result = self.history_agent.respond(reason + user_query)    
-            else:
-                result = BaseAgent("BaseAgent", "This question is out of scope/not related to subjects, respond accordingly and stay on topic itself and try not to explain/expand on it too much. Politely ask them to stay on topic and show what all agents you have. (Math, Physics, History, Chemistry), Do respond politely to greetings and just try to steer the conversation in the right direction if user is going offtopic.").respond(user_query)
-                # result = "This question is out of scope for me, please try another question."
-
-            return {
-                "agent": subject,
-                "response": result,
-                "reason": reason
-            }
+            return self._answer_with_agent(subject, reason + user_query, reason)
 
         except Exception as e:
             return {
@@ -96,6 +147,46 @@ class TutorAgent(BaseAgent):
                 "response": f"Classification failed. Error: {str(e)}",
                 "reason": "Gemini classification failed."
             }
+
+    def _parse_classification_response(self, raw_response: str, user_query: str) -> dict:
+        if not raw_response:
+            return {"subject": "Unknown", "reason": "Empty classifier response."}
+
+        cleaned = raw_response.strip()
+        # Handle fenced code blocks.
+        if cleaned.startswith("```"):
+            cleaned = cleaned.strip("`").strip()
+            if cleaned.startswith("json"):
+                cleaned = cleaned[4:].strip()
+
+        # Try direct JSON parsing first.
+        try:
+            return json.loads(cleaned)
+        except json.JSONDecodeError:
+            pass
+
+        # Try to parse the first JSON object-like block from the text.
+        match = re.search(r"\{[\s\S]*\}", cleaned)
+        if match:
+            try:
+                return json.loads(match.group(0))
+            except json.JSONDecodeError:
+                pass
+
+        # Fallback: infer subject from text if model returned non-JSON prose.
+        normalized = cleaned.lower()
+        for agent_name in ["MathAgent", "PhysicsAgent", "ChemistryAgent", "HistoryAgent"]:
+            if agent_name.lower() in normalized:
+                return {
+                    "subject": agent_name,
+                    "reason": "Parsed subject from non-JSON classifier output."
+                }
+
+        # Final fallback to keep chat flowing instead of hard failure.
+        return {
+            "subject": "Unknown",
+            "reason": f"Could not parse classifier JSON for query: {user_query[:80]}"
+        }
 
     def _trim_messages(self, messages):
         # First limit by message count

@@ -1,10 +1,16 @@
 from .base_agent import BaseAgent
+from .latex_instructions import FBD_INSTRUCTIONS, LATEX_MATH_INSTRUCTIONS
 from tools.constants import PHYSICS_CONSTANTS
 import difflib
 
 class PhysicsAgent(BaseAgent):
     def __init__(self):
-        super().__init__("PhysicsAgent", "You are a physics expert. Explain physical constants and physics concepts.")
+        super().__init__(
+            "PhysicsAgent",
+            "You are a physics expert. Explain physical constants and physics concepts clearly. "
+            + LATEX_MATH_INSTRUCTIONS
+            + FBD_INSTRUCTIONS,
+        )
 
     def get_constant_info(self, query: str):
         query = query.lower()

@@ -92,3 +92,27 @@ body {
     @apply bg-background text-foreground;
   }
 }
+
+@layer base {
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(14, 165, 233, 0.35), rgba(147, 51, 234, 0.35));
+    border-radius: 9999px;
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgba(14, 165, 233, 0.6), rgba(147, 51, 234, 0.6));
+    border: 2px solid transparent;
+    background-clip: padding-box;
+  }
+}
