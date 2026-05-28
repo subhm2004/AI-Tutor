@@ -419,12 +419,6 @@ More detail: **[SETUP.md](./SETUP.md)**
 
 ---
 
-## License
-
-See the repository license file if present. Otherwise treat as private/project use unless specified by the owner.
-
----
-
 ## Author
 
 **Shubham** — [github.com/subhm2004](https://github.com/subhm2004)
