@@ -126,6 +126,14 @@ export default function ChatApp() {
     updateChat(chatId, { title: newTitle });
   };
 
+  const togglePinChat = (chatId: string) => {
+    setChats((prev) =>
+      prev.map((chat) =>
+        chat.id === chatId ? { ...chat, pinned: !chat.pinned } : chat
+      )
+    );
+  };
+
   const addMessage = (chatId: string, message: Message) => {
     setChats((prev) => {
       const updated = prev.map((chat) => {
@@ -196,6 +204,7 @@ export default function ChatApp() {
               onSelectChat={setActiveChat}
               onDeleteChat={deleteChat}
               onRenameChat={renameChat}
+              onTogglePin={togglePinChat}
               onNewChat={createNewChat}
               width={sidebarWidth}
               onWidthChange={setSidebarWidth}

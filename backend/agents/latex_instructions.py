@@ -38,6 +38,7 @@ $$E = E^{\\circ} - \\frac{RT}{nF}\\ln Q$$
   inline $\\ce{H2O}$, $\\ce{O2}$, display $$\\ce{3Fe + 2O2 -> Fe3O4}$$
   Wrong: \\ceFe, \\ceO2. Right: \\ce{Fe}, \\ce{O2}, \\ce{3Fe + 2O2 -> Fe3O4}.
 - Balance equations always in $$\\ce{...}$$ on their own line.
+- Inside sentences use inline $...$ only, e.g. "sulfuric acid ($\\ce{H2SO4}$) and $\\ce{NaOH}$" — do not break the sentence across lines.
 - Gas law: $$PV = nRT$$
 - pH: $\\text{pH} = -\\log_{10}[\\ce{H+}]$
 - Equilibrium: $$K_c = \\frac{[\\ce{C}]^c[\\ce{D}]^d}{[\\ce{A}]^a[\\ce{B}]^b}$$

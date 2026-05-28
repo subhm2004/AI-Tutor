@@ -5,9 +5,12 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import "katex/dist/katex.min.css";
 import { renderKatex } from "@/lib/katex-setup";
-import { splitMathAndMarkdown } from "@/utils/split-math-markdown";
+import {
+  groupContentBlocks,
+  splitMathAndMarkdown,
+} from "@/utils/split-math-markdown";
 
-const markdownComponents = {
+const blockMarkdownComponents = {
   h1: ({ children }: { children?: React.ReactNode }) => (
     <h1 className="mb-3 text-xl font-bold text-slate-900 dark:text-slate-100">
       {children}
@@ -117,13 +120,27 @@ const markdownComponents = {
   ),
 };
 
+/** Inline markdown — no block <p> wrappers so math stays on the same line. */
+const inlineMarkdownComponents = {
+  ...blockMarkdownComponents,
+  p: ({ children }: { children?: React.ReactNode }) => (
+    <span className="inline">{children}</span>
+  ),
+  ul: ({ children }: { children?: React.ReactNode }) => (
+    <span className="inline">{children}</span>
+  ),
+  ol: ({ children }: { children?: React.ReactNode }) => (
+    <span className="inline">{children}</span>
+  ),
+};
+
 function MathBlock({ tex, display }: { tex: string; display: boolean }) {
   const html = useMemo(() => renderKatex(tex, display), [tex, display]);
 
   if (display) {
     return (
       <div
-        className="katex-display my-4 overflow-x-auto rounded-lg bg-slate-50 px-4 py-3 dark:bg-slate-800/50"
+        className="katex-display my-4 overflow-x-auto rounded-lg bg-slate-50 px-4 py-3 dark:bg-slate-800/50 [&_.katex]:text-base"
         dangerouslySetInnerHTML={{ __html: html }}
       />
     );
@@ -131,9 +148,23 @@ function MathBlock({ tex, display }: { tex: string; display: boolean }) {
 
   return (
     <span
-      className="katex-inline mx-0.5"
+      className="katex-inline mx-0.5 align-baseline [&_.katex]:text-[1em]"
       dangerouslySetInnerHTML={{ __html: html }}
     />
+  );
+}
+
+function InlineMarkdown({ content }: { content: string }) {
+  const trimmed = content.trim();
+  if (!trimmed) return null;
+
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={inlineMarkdownComponents}
+    >
+      {trimmed}
+    </ReactMarkdown>
   );
 }
 
@@ -143,25 +174,48 @@ interface MarkdownMessageProps {
 }
 
 export function MarkdownMessage({ content, className = "" }: MarkdownMessageProps) {
-  const parts = useMemo(() => splitMathAndMarkdown(content), [content]);
+  const blocks = useMemo(() => {
+    const parts = splitMathAndMarkdown(content);
+    return groupContentBlocks(parts);
+  }, [content]);
 
   return (
     <div
       className={`prose prose-sm max-w-none dark:prose-invert prose-cyan [&_.katex]:text-slate-900 dark:[&_.katex]:text-slate-100 [&>pre]:font-mono [&>pre]:text-sm [&>*:first-child]:mt-0 [&>*:last-child]:mb-0 ${className}`}
     >
-      {parts.map((part, index) =>
-        part.type === "math" ? (
-          <MathBlock key={index} tex={part.value} display={part.display} />
-        ) : (
-          <ReactMarkdown
-            key={index}
-            remarkPlugins={[remarkGfm]}
-            components={markdownComponents}
-          >
-            {part.value}
-          </ReactMarkdown>
-        )
-      )}
+      {blocks.map((block, index) => {
+        if (block.type === "display-math") {
+          return <MathBlock key={index} tex={block.value} display />;
+        }
+
+        if (block.type === "markdown-block") {
+          return (
+            <ReactMarkdown
+              key={index}
+              remarkPlugins={[remarkGfm]}
+              components={blockMarkdownComponents}
+            >
+              {block.value}
+            </ReactMarkdown>
+          );
+        }
+
+        return (
+          <p key={index} className="mb-3 last:mb-0 leading-relaxed">
+            {block.parts.map((part, partIndex) =>
+              part.type === "math" ? (
+                <MathBlock
+                  key={partIndex}
+                  tex={part.value}
+                  display={false}
+                />
+              ) : (
+                <InlineMarkdown key={partIndex} content={part.value} />
+              )
+            )}
+          </p>
+        );
+      })}
     </div>
   );
 }

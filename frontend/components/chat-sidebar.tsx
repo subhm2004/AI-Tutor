@@ -16,6 +16,8 @@ import {
   Edit2,
   Check,
   X,
+  Star,
+  Pin,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -32,6 +34,7 @@ interface ChatSidebarProps {
   onSelectChat: (chatId: string) => void;
   onDeleteChat: (chatId: string) => void;
   onRenameChat: (chatId: string, newTitle: string) => void;
+  onTogglePin: (chatId: string) => void;
   onNewChat: () => void;
   width: number;
   onWidthChange: (width: number) => void;
@@ -43,6 +46,7 @@ export function ChatSidebar({
   onSelectChat,
   onDeleteChat,
   onRenameChat,
+  onTogglePin,
   onNewChat,
   width,
   onWidthChange,
@@ -114,10 +118,22 @@ export function ChatSidebar({
     }
   };
 
-  const groupChatsByDate = (chats: Chat[]) => {
-    const groups: { [key: string]: Chat[] } = {};
+  const sortByUpdated = (a: Chat, b: Chat) => {
+    const aTime = new Date(a.updatedAt).getTime();
+    const bTime = new Date(b.updatedAt).getTime();
+    return bTime - aTime;
+  };
 
-    chats.forEach((chat) => {
+  const groupChatsByDate = (allChats: Chat[]) => {
+    const groups: { [key: string]: Chat[] } = {};
+    const pinned = allChats.filter((c) => c.pinned).sort(sortByUpdated);
+    const unpinned = allChats.filter((c) => !c.pinned);
+
+    if (pinned.length > 0) {
+      groups["Pinned"] = pinned;
+    }
+
+    unpinned.forEach((chat) => {
       const now = new Date();
       const dateObj =
         chat.updatedAt instanceof Date
@@ -148,10 +164,18 @@ export function ChatSidebar({
       groups[group].push(chat);
     });
 
+    Object.keys(groups).forEach((key) => {
+      if (key !== "Pinned") {
+        groups[key].sort(sortByUpdated);
+      }
+    });
+
     return groups;
   };
 
+  const groupOrder = ["Pinned", "Today", "Yesterday", "This Week", "Older", "Unknown"];
   const chatGroups = groupChatsByDate(chats);
+  const orderedGroups = groupOrder.filter((g) => chatGroups[g]?.length);
 
   const handleChatMouseEnter = (chatId: string) => {
     setHoveredChat(chatId);
@@ -237,11 +261,23 @@ export function ChatSidebar({
         {/* Chat List */}
         <ScrollArea className="flex-1">
           <div className="p-2">
-            {Object.entries(chatGroups).map(([group, groupChats]) => (
+            {orderedGroups.map((group) => {
+              const groupChats = chatGroups[group];
+              return (
               <div key={group} className="mb-4">
                 <div className="flex items-center gap-1 px-2 py-1 mb-1">
-                  <Clock className="h-2.5 w-2.5 text-slate-400" />
-                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                  {group === "Pinned" ? (
+                    <Pin className="h-2.5 w-2.5 text-amber-500" />
+                  ) : (
+                    <Clock className="h-2.5 w-2.5 text-slate-400" />
+                  )}
+                  <span
+                    className={`text-xs font-medium uppercase tracking-wider ${
+                      group === "Pinned"
+                        ? "text-amber-600 dark:text-amber-400"
+                        : "text-slate-500 dark:text-slate-400"
+                    }`}
+                  >
                     {group}
                   </span>
                 </div>
@@ -256,7 +292,9 @@ export function ChatSidebar({
                       className={`group relative mb-1 cursor-pointer rounded-lg transition-all duration-200 ${
                         activeChat === chat.id
                           ? "border border-cyan-200 bg-gradient-to-r from-cyan-50 to-slate-50 shadow-sm shadow-cyan-100/70 dark:border-cyan-900 dark:from-cyan-950/30 dark:to-slate-900 dark:shadow-none"
-                          : "hover:bg-slate-50/90 dark:hover:bg-slate-800/50"
+                          : chat.pinned
+                            ? "border border-amber-200/60 bg-amber-50/50 hover:bg-amber-50/80 dark:border-amber-900/50 dark:bg-amber-950/20 dark:hover:bg-amber-950/30"
+                            : "hover:bg-slate-50/90 dark:hover:bg-slate-800/50"
                       }`}
                       onMouseEnter={() => handleChatMouseEnter(chat.id)}
                       onMouseLeave={() => handleChatMouseLeave(chat.id)}
@@ -324,6 +362,26 @@ export function ChatSidebar({
                           )}
                         </div>
 
+                        <div className="flex shrink-0 items-center gap-0.5">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className={`h-5 w-5 p-0 transition-opacity ${
+                              chat.pinned
+                                ? "text-amber-500 opacity-100"
+                                : "text-slate-400 opacity-0 group-hover:opacity-100 hover:text-amber-500"
+                            }`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onTogglePin(chat.id);
+                            }}
+                            title={chat.pinned ? "Unpin chat" : "Pin chat"}
+                          >
+                            <Star
+                              className={`h-3 w-3 ${chat.pinned ? "fill-current" : ""}`}
+                            />
+                          </Button>
+
                         <AnimatePresence>
                           {(hoveredChat === chat.id ||
                             activeChat === chat.id ||
@@ -358,6 +416,19 @@ export function ChatSidebar({
                                     <DropdownMenuItem
                                       onClick={(e) => {
                                         e.stopPropagation();
+                                        onTogglePin(chat.id);
+                                        setOpenDropdown(null);
+                                      }}
+                                      className="text-slate-600 focus:text-slate-600 dark:text-slate-400 focus:bg-slate-50 dark:focus:bg-slate-800"
+                                    >
+                                      <Star
+                                        className={`h-3 w-3 mr-2 ${chat.pinned ? "fill-amber-500 text-amber-500" : ""}`}
+                                      />
+                                      {chat.pinned ? "Unpin" : "Pin"}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={(e) => {
+                                        e.stopPropagation();
                                         startEditing(chat);
                                       }}
                                       className="text-slate-600 focus:text-slate-600 dark:text-slate-400 focus:bg-slate-50 dark:focus:bg-slate-800"
@@ -382,12 +453,14 @@ export function ChatSidebar({
                               </motion.div>
                             )}
                         </AnimatePresence>
+                        </div>
                       </div>
                     </motion.div>
                   ))}
                 </AnimatePresence>
               </div>
-            ))}
+            );
+            })}
           </div>
         </ScrollArea>
 

@@ -4,6 +4,7 @@ export interface Message {
   content: string
   timestamp: Date
   imageUrl?: string
+  agent?: string
 }
 
 export interface Chat {
@@ -12,6 +13,7 @@ export interface Chat {
   messages: Message[]
   createdAt: Date
   updatedAt: Date
+  pinned?: boolean
 }
 
 export interface ChatResponse {

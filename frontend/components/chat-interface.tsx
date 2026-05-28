@@ -27,6 +27,7 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { TypingMessage } from "@/components/typing-message";
 import { MarkdownMessage } from "@/components/markdown-message";
+import { AgentBadge } from "@/components/agent-badge";
 
 interface ChatInterfaceProps {
   chat: Chat;
@@ -47,6 +48,7 @@ export function ChatInterface({
   const [typingMessage, setTypingMessage] = useState<{
     id: string;
     content: string;
+    agent?: string;
   } | null>(null);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -88,10 +90,11 @@ export function ChatInterface({
     }
   }, [input]);
 
-  const showAssistantReply = (responseContent: string) => {
+  const showAssistantReply = (responseContent: string, agent?: string) => {
     setTypingMessage({
       id: `assistant-${Date.now()}`,
       content: responseContent,
+      agent,
     });
   };
 
@@ -162,14 +165,14 @@ export function ChatInterface({
         response.response ||
         "Sorry, I could not process your request.";
 
-      showAssistantReply(responseContent);
+      showAssistantReply(responseContent, response.agent);
     } catch (error) {
       console.error("Error sending message:", error);
       const errorContent =
         error instanceof Error
           ? error.message
           : "Sorry, there was an error processing your request. Please try again.";
-      showAssistantReply(errorContent);
+      showAssistantReply(errorContent, "Unknown");
     } finally {
       setIsLoading(false);
     }
@@ -182,6 +185,7 @@ export function ChatInterface({
         role: "assistant",
         content: typingMessage.content,
         timestamp: new Date(),
+        ...(typingMessage.agent ? { agent: typingMessage.agent } : {}),
       };
 
       onAddMessage(chat.id, assistantMessage);
@@ -383,7 +387,14 @@ export function ChatInterface({
                             )}
                         </div>
                       ) : (
-                        <MarkdownMessage content={message.content} />
+                        <>
+                          {message.agent && (
+                            <div className="mb-2">
+                              <AgentBadge agent={message.agent} />
+                            </div>
+                          )}
+                          <MarkdownMessage content={message.content} />
+                        </>
                       )}
                     </motion.div>
 
@@ -439,6 +450,11 @@ export function ChatInterface({
                   </div>
                   <div className="group max-w-[82%] sm:max-w-[75%]">
                     <div className="rounded-2xl border border-slate-200/70 bg-white/90 p-4 shadow-sm backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-800/90">
+                      {typingMessage.agent && (
+                        <div className="mb-2">
+                          <AgentBadge agent={typingMessage.agent} />
+                        </div>
+                      )}
                       <TypingMessage
                         content={typingMessage.content}
                         onComplete={handleTypingComplete}
