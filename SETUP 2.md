@@ -1,4 +1,4 @@
-# IntellectA Setup Guide
+# AI Tutor Setup Guide
 
 This guide helps you set up and run the project on macOS/Linux.
 
@@ -27,8 +27,6 @@ File: `backend/.env`
 ```env
 GROQ_API_KEY=your_groq_api_key_here
 GROQ_MODEL=llama-3.1-8b-instant
-JWT_SECRET_KEY=your_long_random_secret_here
-JWT_EXPIRE_DAYS=7
 ```
 
 ### Frontend env
@@ -36,15 +34,8 @@ JWT_EXPIRE_DAYS=7
 File: `frontend/.env.local`
 
 ```env
-NEXT_PUBLIC_BACKEND_URL=http://127.0.0.1:5001
+NEXT_PUBLIC_BACKEND_URL=http://127.0.0.1:5000
 ```
-
-## Auth (JWT)
-
-- Register / login: `http://localhost:3000/login`
-- Chat (`/chat`) requires a valid JWT token
-- API routes protected: `POST /api/chat`, `POST /api/chat/image`
-- Public routes: `POST /api/auth/register`, `POST /api/auth/login`, `GET /api/health`
 
 ## 4) Install Dependencies
 
@@ -107,7 +98,7 @@ Expected response:
 ```json
 {
   "status": "ok",
-  "message": "IntellectA is healthy."
+  "message": "Tutor system is healthy."
 }
 ```
 
@@ -149,61 +140,12 @@ Check:
 - `backend/.env` has valid `GROQ_API_KEY`
 - Key is active and not restricted incorrectly
 
-### Issue: `GET /_next/static/...` returns 404 (blank page, broken CSS)
-
-Cause: Next.js dev cache (`.next`) is out of sync with the browser. This often happens after:
-
-- Stopping dev with `Ctrl+C` mid-compile
-- Running `dev:clean` while the browser tab is still open
-- Hot reload failing (`entryCSSFiles` / `fallback-build-manifest.json` errors in terminal)
-- Partial `npm install` (e.g. only one package added)
-
-Fix (do in order):
-
-```bash
-# 1) Stop dev server (Ctrl+C) — only one `next dev` should run
-
-cd frontend
-rm -rf .next
-npm install
-npm run dev
-```
-
-Then in the browser: **hard refresh** (`Cmd+Shift+R` on Mac) or open an incognito window.
-
-If it still happens:
-
-```bash
-cd frontend
-rm -rf .next node_modules package-lock.json
-npm install
-npm run dev
-```
-
-Optional script (clears cache before each dev start):
-
-```bash
-npm run dev:clean
-```
-
-### Issue: Webpack warnings (`<w> [webpack.cache.PackFileCacheStrategy]` / `next-route-loader`)
-
-These are **warnings**, not app bugs. They appear when `.next/server` was deleted or not ready while webpack was still caching (often right after `dev:clean`, a failed compile, or saving many files quickly).
-
-Fix: same as the 404 issue above — stop dev, `rm -rf .next`, `npm run dev`, hard refresh browser. The project uses in-memory webpack cache in dev to reduce this noise.
-
 ## 8) Useful Commands
 
 Run only frontend:
 
 ```bash
 npm --prefix frontend run dev
-```
-
-Run frontend with a fresh `.next` cache:
-
-```bash
-npm --prefix frontend run dev:clean
 ```
 
 Run only backend:

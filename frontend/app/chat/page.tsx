@@ -6,10 +6,17 @@ import { ChatSidebar } from "@/components/chat-sidebar";
 import { ChatInterface } from "@/components/chat-interface";
 import { AuthGuard } from "@/components/auth-guard";
 import { Button } from "@/components/ui/button";
-import { Menu, Plus, Sparkles } from "lucide-react";
+import { Menu, Plus } from "lucide-react";
+import { LogoBrand, LogoIcon } from "@/components/brand/logo";
 import type { Chat, Message } from "@/types/chat";
 import type { AuthUser } from "@/types/auth";
-import { chatsStorageKey, getStoredUser } from "@/lib/auth";
+import {
+  chatsStorageKey,
+  getStoredUser,
+  migrateLegacyChatsKey,
+  SIDEBAR_WIDTH_KEY,
+  LEGACY_SIDEBAR_WIDTH_KEY,
+} from "@/lib/auth";
 import { authApi } from "@/utils/auth-api";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -34,9 +41,14 @@ function ChatAppContent() {
     const currentUser = getStoredUser();
     setUser(currentUser);
 
+    if (currentUser?.id) migrateLegacyChatsKey(currentUser.id);
     const storageKey = chatsStorageKey(currentUser?.id);
     const savedChats = localStorage.getItem(storageKey);
-    const savedSidebarWidth = localStorage.getItem("ai-tutor-sidebar-width");
+    const legacySidebar = localStorage.getItem(LEGACY_SIDEBAR_WIDTH_KEY);
+    if (legacySidebar && !localStorage.getItem(SIDEBAR_WIDTH_KEY)) {
+      localStorage.setItem(SIDEBAR_WIDTH_KEY, legacySidebar);
+    }
+    const savedSidebarWidth = localStorage.getItem(SIDEBAR_WIDTH_KEY);
 
     if (savedSidebarWidth) {
       setSidebarWidth(Number.parseInt(savedSidebarWidth));
@@ -80,7 +92,7 @@ function ChatAppContent() {
   }, [chats, isInitialized, user]);
 
   useEffect(() => {
-    localStorage.setItem("ai-tutor-sidebar-width", sidebarWidth.toString());
+    localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
   }, [sidebarWidth]);
 
   const handleLogout = () => {
@@ -169,11 +181,9 @@ function ChatAppContent() {
     return (
       <div className="flex h-screen items-center justify-center bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 animate-pulse items-center justify-center rounded-lg bg-gradient-to-r from-cyan-600 to-indigo-600">
-            <Sparkles className="h-4 w-4 text-white" />
-          </div>
+          <LogoIcon size="sm" className="animate-pulse" />
           <span className="text-slate-600 dark:text-slate-400">
-            Loading AI Tutor...
+            Loading IntellectA...
           </span>
         </div>
       </div>
@@ -235,12 +245,10 @@ function ChatAppContent() {
               <Menu className="h-5 w-5" />
             </Button>
             <div className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-r from-cyan-500 to-indigo-500">
-                <Sparkles className="h-4 w-4 text-white" />
-              </div>
+              <LogoIcon size="sm" />
               <div>
                 <h1 className="bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-lg font-semibold text-transparent dark:from-slate-100 dark:to-slate-400">
-                  {currentChat?.title || "AI Tutor"}
+                  {currentChat?.title || "IntellectA"}
                 </h1>
                 <div className="flex items-center gap-2">
                   <p className="text-xs text-slate-500 dark:text-slate-400">

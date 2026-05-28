@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { authApi } from "@/utils/auth-api";
 import { isAuthenticated } from "@/lib/auth";
-import { Sparkles } from "lucide-react";
+import { LogoIcon } from "@/components/brand/logo";
 import { motion } from "framer-motion";
 import { useEffect } from "react";
 
@@ -58,12 +58,10 @@ export default function LoginPage() {
         className="w-full max-w-md rounded-2xl border border-slate-200/70 bg-white/90 p-8 shadow-xl backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-900/90"
       >
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600">
-            <Sparkles className="h-5 w-5 text-white" />
-          </div>
+          <LogoIcon size="lg" />
           <div>
             <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-              AI Tutor
+              IntellectA
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400">
               {mode === "login" ? "Sign in to continue" : "Create your account"}

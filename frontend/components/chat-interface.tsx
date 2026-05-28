@@ -13,9 +13,9 @@ import {
   Bot,
   Copy,
   Check,
-  Sparkles,
   BookOpen,
   Lightbulb,
+  GraduationCap,
   ImagePlus,
   X,
   Square,
@@ -34,6 +34,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { TypingMessage } from "@/components/typing-message";
 import { MarkdownMessage } from "@/components/markdown-message";
 import { AgentBadge } from "@/components/agent-badge";
+import { LogoAvatar, LogoIcon } from "@/components/brand/logo";
 interface ChatInterfaceProps {
   chat: Chat;
   onAddMessage: (chatId: string, message: Message) => void;
@@ -334,7 +335,7 @@ export function ChatInterface({
     },
     {
       text: "What were the main long-term causes of World War I?",
-      icon: Sparkles,
+      icon: GraduationCap,
     },
     {
       text: "How does time dilation work when something moves close to the speed of light?",
@@ -378,9 +379,9 @@ export function ChatInterface({
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                className="w-16 h-16 bg-gradient-to-r from-cyan-600 to-indigo-600 rounded-2xl flex items-center justify-center mx-auto mb-6"
+                className="mx-auto mb-6 flex justify-center"
               >
-                <Sparkles className="h-8 w-8 text-white" />
+                <LogoIcon size="2xl" />
               </motion.div>
               <motion.h3
                 initial={{ opacity: 0 }}
@@ -443,11 +444,7 @@ export function ChatInterface({
                   }`}
                 >
                   {message.role === "assistant" && (
-                    <div className="flex-shrink-0">
-                      <div className="w-10 h-10 bg-gradient-to-r from-cyan-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                        <Sparkles className="h-5 w-5 text-white" />
-                      </div>
-                    </div>
+                    <LogoAvatar size="md" />
                   )}
 
                   <div
@@ -558,11 +555,7 @@ export function ChatInterface({
                   animate={{ opacity: 1, y: 0 }}
                   className="flex gap-4 justify-start"
                 >
-                  <div className="flex-shrink-0">
-                    <div className="w-10 h-10 bg-gradient-to-r from-cyan-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                      <Sparkles className="h-5 w-5 text-white" />
-                    </div>
-                  </div>
+                  <LogoAvatar size="md" />
                   <div className="group max-w-[82%] sm:max-w-[75%]">
                     <div className="rounded-2xl border border-slate-200/70 bg-white/90 p-4 shadow-sm backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-800/90">
                       {typingMessage.agent && (
@@ -592,11 +585,7 @@ export function ChatInterface({
                 exit={{ opacity: 0, y: -20 }}
                 className="flex gap-4 justify-start"
               >
-                <div className="flex-shrink-0">
-                  <div className="w-10 h-10 bg-gradient-to-r from-cyan-600 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg">
-                    <Sparkles className="h-5 w-5 text-white" />
-                  </div>
-                </div>
+                <LogoAvatar size="md" />
                 <div className="rounded-2xl border border-slate-200/70 bg-white/90 p-4 shadow-sm backdrop-blur-sm dark:border-slate-700/70 dark:bg-slate-800/90">
                   <div className="flex space-x-2">
                     <motion.div

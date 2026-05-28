@@ -1,8 +1,10 @@
 import os
+import shutil
 import sqlite3
 from werkzeug.security import check_password_hash, generate_password_hash
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "data", "ai_tutor.db")
+DB_PATH = os.path.join(os.path.dirname(__file__), "data", "intellecta.db")
+LEGACY_DB_PATH = os.path.join(os.path.dirname(__file__), "data", "ai_tutor.db")
 
 
 def get_conn() -> sqlite3.Connection:
@@ -13,6 +15,8 @@ def get_conn() -> sqlite3.Connection:
 
 def init_db() -> None:
     os.makedirs(os.path.dirname(DB_PATH), exist_ok=True)
+    if os.path.isfile(LEGACY_DB_PATH) and not os.path.isfile(DB_PATH):
+        shutil.copy2(LEGACY_DB_PATH, DB_PATH)
     with get_conn() as conn:
         conn.execute(
             """

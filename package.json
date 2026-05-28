@@ -1,5 +1,5 @@
 {
-  "name": "ai-tutor-root",
+  "name": "intellecta-root",
   "private": true,
   "scripts": {
     "dev": "concurrently -n backend,frontend -c blue,green \"cd backend && venv/bin/python app.py\" \"cd frontend && npm run dev\"",

@@ -12,7 +12,6 @@ import {
   Plus,
   Trash2,
   MoreHorizontal,
-  Sparkles,
   Clock,
   Edit2,
   Check,
@@ -29,6 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { motion, AnimatePresence } from "framer-motion";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { LogoBrand } from "@/components/brand/logo";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 function getUserInitials(user: AuthUser): string {
@@ -254,18 +254,13 @@ export function ChatSidebar({
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
         <div className="border-b border-slate-200/70 p-3 dark:border-slate-800/80">
-          <div className="flex items-center gap-2 mb-3">
-            <div className="w-6 h-6 bg-gradient-to-r from-cyan-600 to-indigo-600 rounded-md flex items-center justify-center">
-              <Sparkles className="h-3 w-3 text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h2 className="font-semibold text-sm text-slate-900 dark:text-slate-100 truncate">
-                AI Tutor
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Learning companion
-              </p>
-            </div>
+          <div className="mb-3 flex items-center gap-2">
+            <LogoBrand
+              size="sm"
+              showTagline
+              tagline="Learning companion"
+              className="min-w-0 flex-1"
+            />
             <ThemeToggle />
           </div>
           <Button
@@ -513,7 +508,7 @@ export function ChatSidebar({
             </div>
           )}
           <p className="text-center text-[10px] font-medium tracking-wide text-slate-400 dark:text-slate-500">
-            AI Tutor <span className="text-slate-300 dark:text-slate-600">·</span> v1.0
+            IntellectA <span className="text-slate-300 dark:text-slate-600">·</span> v1.0
           </p>
         </div>
       </div>

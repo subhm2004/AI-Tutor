@@ -40,9 +40,60 @@ body {
   will-change: transform;
 }
 
+@keyframes gradient-shift {
+  0%,
+  100% {
+    background-position: 0% center;
+  }
+  50% {
+    background-position: 100% center;
+  }
+}
+
+.animate-gradient-shift {
+  animation: gradient-shift 5s ease infinite;
+}
+
+@keyframes btn-shimmer {
+  0% {
+    background-position: 200% center;
+  }
+  100% {
+    background-position: -200% center;
+  }
+}
+
+.btn-shimmer {
+  background-image: linear-gradient(
+    110deg,
+    transparent 25%,
+    rgba(255, 255, 255, 0.35) 50%,
+    transparent 75%
+  );
+  background-size: 200% 100%;
+  animation: btn-shimmer 3s ease-in-out infinite;
+}
+
+@keyframes trust-marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.animate-trust-marquee {
+  animation: trust-marquee 28s linear infinite;
+  will-change: transform;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-testimonial-marquee,
-  .animate-testimonial-marquee-reverse {
+  .animate-testimonial-marquee-reverse,
+  .animate-trust-marquee,
+  .animate-gradient-shift,
+  .btn-shimmer {
     animation: none;
   }
 }

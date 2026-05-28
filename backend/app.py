@@ -64,7 +64,7 @@ def chat_image():
 
 @app.route("/api/health", methods=["GET"])
 def health():
-    return jsonify({"status": "ok", "message": "Tutor system is healthy."}), 200
+    return jsonify({"status": "ok", "message": "IntellectA is healthy."}), 200
 
 
 @app.route("/api/agents", methods=["GET"])
