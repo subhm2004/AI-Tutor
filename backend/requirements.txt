@@ -4,3 +4,4 @@ python-dotenv
 groq
 PyJWT
 werkzeug
+gunicorn
